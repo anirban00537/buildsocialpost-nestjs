@@ -24,7 +24,7 @@ model User {
   status        Int       @default(0) @db.SmallInt
   is_subscribed Int       @default(0) @db.SmallInt
 
-  email_verified Int       @default(0) @db.SmallInt
+  email_verified Int @default(0) @db.SmallInt
   phone_verified Int @default(0) @db.SmallInt
   gender         Int @default(1) @db.SmallInt
 
@@ -33,12 +33,10 @@ model User {
 
   UserTokens            UserTokens[]
   UserVerificationCodes UserVerificationCodes[]
-}
-
-model AdminSettings {
-  id    Int    @id @default(autoincrement())
-  slug  String @unique
-  value String @db.Text()
+  Subscription          Subscription?
+  Carousel              Carousel[]
+  UserBranding          UserBranding?
+  Image                 Image[]
 }
 
 model UserTokens {
@@ -53,6 +51,68 @@ model UserTokens {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Subscription {
+  id                         String   @id @default(cuid())
+  userId                     Int      @unique
+  orderId                    String   @unique
+  status                     String
+  endDate                    DateTime
+  createdAt                  DateTime @default(now())
+  productName                String
+  variantName                String
+  subscriptionLengthInMonths Int
+  totalAmount                Float
+  currency                   String
+  user                       User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Carousel {
+  id                      String   @id @default(uuid())
+  userId                  Int // Changed from String to Int
+  name                    String
+  titleTextSettings       Json
+  descriptionTextSettings Json
+  taglineTextSettings     Json
+  layout                  Json
+  background              Json
+  slides                  Json
+  sharedSelectedElement   Json?
+  fontFamily              String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  globalBackground        Json?
+  user                    User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model UserBranding {
+  id       String  @id @default(uuid())
+  userId   Int     @unique // Changed from String to Int
+  name     String
+  handle   String
+  headshot String?
+  user     User    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Image {
+  id        String   @id @default(uuid())
+  userId    Int
+  url       String
+  name      String
+  size      Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model UserVerificationCodes {
@@ -67,4 +127,6 @@ model UserVerificationCodes {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
 }
