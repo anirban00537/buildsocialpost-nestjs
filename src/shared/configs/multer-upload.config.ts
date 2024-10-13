@@ -32,23 +32,6 @@ export const multerUploadConfig: MulterOptions = {
       const { originalname, mimetype, path } = file;
 
       const fileName = `${uniqueSuffix}-${file.originalname}`;
-      PrismaClient.myUploads
-        .create({
-          data: {
-            // user_id: Number(user.id),
-            user: {
-              connect: { id: user.id }, // Connect the upload to the user
-            },
-            fieldname: originalname,
-            mimetype: mimetype,
-            originalname: originalname,
-            file_path: `/${coreConstant.FILE_DESTINATION}/${fileName}`,
-            filename: fileName,
-          },
-        })
-        .then((res) => {
-          console.log(res, 'res');
-        });
 
       return callback(null, fileName);
     },
