@@ -11,7 +11,6 @@ import { UsersModule } from '../users/users.module';
 import { MailModule } from 'src/shared/mail/mail.module';
 import { ApiSecretCheckMiddleware } from 'src/shared/middlewares/apisecret.middleware';
 import { coreConstant } from 'src/shared/helpers/coreConstant';
-import { SettingsModule } from '../admin/settings/settings.module';
 
 @Module({
   imports: [
@@ -23,7 +22,6 @@ import { SettingsModule } from '../admin/settings/settings.module';
     AuthModule,
     UsersModule,
     MailModule,
-    SettingsModule
   ],
   providers: [
     {
