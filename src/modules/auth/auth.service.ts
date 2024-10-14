@@ -1,15 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { SignupCredentialsDto } from './dto/signup-credentials.dto';
-import { SignupResponse } from './dto/signup.response';
 import { LoginCredentialsDto } from './dto/login-credentials.dto';
-import { LoginResponse } from './dto/login.response';
 import { RefreshTokenPayload } from './types/refresh-token-payload';
 import { JwtService } from '@nestjs/jwt';
-
 import { User, UserTokens } from '@prisma/client';
 import { InvalidEmailOrPasswordException } from './exceptions/invalid-email-or-password.exception.';
-
 import { InvalidRefreshTokenException } from './exceptions/invalid-refresh-token.exception';
 import { compare } from 'bcrypt';
 import { v4 as uuidV4 } from 'uuid';
@@ -24,7 +20,6 @@ import {
   successResponse,
 } from 'src/shared/helpers/functions';
 import { PrismaService } from '../prisma/prisma.service';
-import { MailService } from 'src/shared/mail/mail.service';
 import { getTokenExpirationDate } from 'src/shared/utils/getTokenExpirationDate';
 import {
   accessJwtConfig,
@@ -52,6 +47,7 @@ export class AuthService {
   ) {
     this.googleClient = new OAuth2Client(
       this.configService.get('GOOGLE_CLIENT_ID'),
+      this.configService.get('GOOGLE_CLIENT_SECRET'),
     );
   }
 
@@ -416,7 +412,10 @@ export class AuthService {
 
       const [accessToken, refreshToken] = await Promise.all([
         this.generateAccessToken({ sub: user.id, email: user.email }),
-        this.createRefreshToken({ sub: user.id, email: user.email }, 'Google Login'),
+        this.createRefreshToken(
+          { sub: user.id, email: user.email },
+          'Google Login',
+        ),
       ]);
 
       return this.createLoginResponse(user, accessToken, refreshToken);
@@ -454,7 +453,9 @@ export class AuthService {
 
       user = createUserResponse.data as User;
     } else if (user.login_provider !== LOGIN_PROVIDER.GOOGLE) {
-      throw new UnauthorizedException('Email already exists with a different login method');
+      throw new UnauthorizedException(
+        'Email already exists with a different login method',
+      );
     }
 
     return user;
@@ -464,7 +465,11 @@ export class AuthService {
     return `${email.split('@')[0]}_${Math.random().toString(36).substr(2, 5)}`;
   }
 
-  private createLoginResponse(user: User, accessToken: string, refreshToken: string): ResponseModel {
+  private createLoginResponse(
+    user: User,
+    accessToken: string,
+    refreshToken: string,
+  ): ResponseModel {
     return successResponse('Login successful', {
       accessToken,
       refreshToken,
