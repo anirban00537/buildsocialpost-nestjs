@@ -43,4 +43,10 @@ export class User implements Prisma.UserUncheckedCreateInput {
    * @example "2022-03-26T15:41:28.527Z"
    */
   updatedAt?: string | Date;
+
+  /**
+   * User login provider
+   * @example "email"
+   */
+  login_provider: string;
 }

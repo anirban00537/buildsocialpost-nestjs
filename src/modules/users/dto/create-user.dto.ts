@@ -43,4 +43,8 @@ export class CreateUserDto implements User {
   //   message: 'Password must contain at least 1 number and 1 letter',
   // })
   password: string;
+
+  @IsNotEmpty()
+  @IsString()
+  login_provider: string;
 }
