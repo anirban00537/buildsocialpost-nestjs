@@ -33,29 +33,6 @@ export class UsersService {
     private readonly notificationService: NotificationService,
   ) {}
 
-  //   private readonly users = [
-  //     {
-  //       userId: 1,
-  //       email: 'john',
-  //       password: 'changeme',
-  //     },
-  //     {
-  //       userId: 2,
-  //       email: 'maria',
-  //       password: 'guess',
-  //     },
-  //   ];
-
-  //     async findOne(email: string): Promise<User | undefined> {
-  //         console.log(email);
-  //     return this.users.find((user) => user.email === email);
-  //   }
-  /** Finds user by email and returns the user with password.
-   * Used mainly in login to compare if the inputted password matches
-   * the hashed one.
-   */
-
-  // unique check email and nick name
   async checkEmailNickName(email: string, nickName: string) {
     const checkUniqueEmail = await this.prisma.user.findUnique({
       where: { email: email },

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { SignupCredentialsDto } from './dto/signup-credentials.dto';
 import { SignupResponse } from './dto/signup.response';
@@ -34,15 +34,26 @@ import { coreConstant } from 'src/shared/helpers/coreConstant';
 import { VerifyEmailCredentialsDto } from './dto/verify-email-credentials.dto';
 import { UserVerificationCodeService } from '../verification_code/user-verify-code.service';
 import { ResetPasswordCredentialsDto } from './dto/reset-password.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
+import { OAuth2Client } from 'google-auth-library';
+import { ConfigService } from '@nestjs/config';
+import { LOGIN_PROVIDER } from 'src/shared/constants/global.constants';
 
 @Injectable()
 export class AuthService {
+  private googleClient: OAuth2Client;
+
   constructor(
     private userService: UsersService,
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly userVerificationCodeService: UserVerificationCodeService,
-  ) {}
+    private configService: ConfigService,
+  ) {
+    this.googleClient = new OAuth2Client(
+      this.configService.get('GOOGLE_CLIENT_ID'),
+    );
+  }
 
   async checkEmailNickName(email: string, nickName: string) {
     const checkUniqueEmail = await this.prisma.user.findUnique({
@@ -75,6 +86,7 @@ export class AuthService {
         ...payload,
         email: lowerCaseEmail,
         password: hashPassword,
+        login_provider: LOGIN_PROVIDER.EMAIL,
       };
       const user = await this.userService.createNewUser(data);
       if (user.success === false) {
@@ -388,5 +400,76 @@ export class AuthService {
     } catch (error) {
       return errorResponse('Invalid email', error);
     }
+  }
+
+  async googleLogin(googleLoginDto: GoogleLoginDto): Promise<ResponseModel> {
+    try {
+      const ticket = await this.verifyGoogleToken(googleLoginDto.idToken);
+      const payload = ticket.getPayload();
+      const email = payload.email;
+
+      if (!email) {
+        throw new UnauthorizedException('Invalid Google account');
+      }
+
+      let user = await this.findOrCreateGoogleUser(payload);
+
+      const [accessToken, refreshToken] = await Promise.all([
+        this.generateAccessToken({ sub: user.id, email: user.email }),
+        this.createRefreshToken({ sub: user.id, email: user.email }, 'Google Login'),
+      ]);
+
+      return this.createLoginResponse(user, accessToken, refreshToken);
+    } catch (err) {
+      console.error('Google login error:', err);
+      return errorResponse('Invalid Google token', []);
+    }
+  }
+
+  private async verifyGoogleToken(idToken: string) {
+    return this.googleClient.verifyIdToken({
+      idToken,
+      audience: this.configService.get('GOOGLE_CLIENT_ID'),
+    });
+  }
+
+  private async findOrCreateGoogleUser(payload: any): Promise<User> {
+    const email = payload.email;
+    let user: User | null = await this.userService.findByEmail(email);
+
+    if (!user) {
+      const createUserResponse = await this.userService.createNewUser({
+        email,
+        first_name: payload.given_name,
+        last_name: payload.family_name,
+        user_name: this.generateUniqueUsername(email),
+        password: await hashedPassword(uuidV4()),
+        email_verified: coreConstant.IS_VERIFIED,
+        login_provider: LOGIN_PROVIDER.GOOGLE,
+      });
+
+      if (!createUserResponse.success) {
+        throw new Error('Failed to create user');
+      }
+
+      user = createUserResponse.data as User;
+    } else if (user.login_provider !== LOGIN_PROVIDER.GOOGLE) {
+      throw new UnauthorizedException('Email already exists with a different login method');
+    }
+
+    return user;
+  }
+
+  private generateUniqueUsername(email: string): string {
+    return `${email.split('@')[0]}_${Math.random().toString(36).substr(2, 5)}`;
+  }
+
+  private createLoginResponse(user: User, accessToken: string, refreshToken: string): ResponseModel {
+    return successResponse('Login successful', {
+      accessToken,
+      refreshToken,
+      user,
+      isAdmin: user.role === coreConstant.USER_ROLE_ADMIN,
+    });
   }
 }

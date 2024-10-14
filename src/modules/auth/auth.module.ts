@@ -9,6 +9,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { AccessJwtStrategy } from './strategy/access.jwt.strategy';
 import { UserVerificationCodeService } from '../verification_code/user-verify-code.service';
 // import { LocalStrategy } from "src/common/strategy/local.strategy";
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { UserVerificationCodeService } from '../verification_code/user-verify-co
       secret: accessJwtConfig.secret,
       signOptions: { expiresIn: accessJwtConfig.expiresIn },
     }),
+    ConfigModule,
   ],
   providers: [AuthService, AccessJwtStrategy, UserVerificationCodeService],
   controllers: [AuthController],

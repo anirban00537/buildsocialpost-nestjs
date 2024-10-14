@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import * as path from 'path';
+import { ConfigService } from '@nestjs/config';
 
 import { AppModule } from './modules/app/app.module';
 import { API_PREFIX } from './shared/constants/global.constants';
@@ -12,6 +13,7 @@ import { coreConstant } from './shared/helpers/coreConstant';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const configService = app.get(ConfigService);
   setApp(app);
   app.setGlobalPrefix(API_PREFIX);
   app.use(
@@ -42,6 +44,6 @@ async function bootstrap() {
     path.join(__dirname, `../../${coreConstant.FILE_DESTINATION}`),
   );
   console.log('Serving at:', `/${coreConstant.FILE_DESTINATION}`);
-  await app.listen(process.env.APP_PORT || 3000);
+  await app.listen(configService.get('APP_PORT') || 3000);
 }
 bootstrap();

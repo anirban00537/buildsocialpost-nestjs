@@ -11,6 +11,8 @@ import { ForgotCredentialsDto } from './dto/forgot-credentials.dto';
 import { Public } from 'src/shared/decorators/public.decorator';
 import { VerifyEmailCredentialsDto } from './dto/verify-email-credentials.dto';
 import { ResetPasswordCredentialsDto } from './dto/reset-password.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
+import { ResponseModel } from 'src/shared/models/response.model';
 
 @Controller('auth')
 export class AuthController {
@@ -93,5 +95,11 @@ export class AuthController {
     const { userId } = request.body.user as { userId: number };
 
     return this.authService.findAllTokens(userId);
+  }
+
+  @Public()
+  @Post('google-login')
+  async googleLogin(@Body() googleLoginDto: GoogleLoginDto): Promise<ResponseModel> {
+    return this.authService.googleLogin(googleLoginDto);
   }
 }

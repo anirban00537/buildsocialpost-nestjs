@@ -24,3 +24,8 @@ export const API_PREFIX = '/api';
 export const PHONE_REGEX = /^[0-9\s+-.()]+$/;
 
 export const SLUG_SEPARATOR = '-';
+
+export const LOGIN_PROVIDER = {
+  EMAIL: 'email',
+  GOOGLE: 'google',
+};

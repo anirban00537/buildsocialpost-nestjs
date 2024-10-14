@@ -37,6 +37,7 @@ model User {
   Carousel              Carousel[]
   UserBranding          UserBranding?
   Image                 Image[]
+  login_provider       String @db.VarChar(50)
 }
 
 model UserTokens {
