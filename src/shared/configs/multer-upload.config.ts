@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs'; // Import the 'fs' module for file system operations
 import { PrismaClient } from '../helpers/functions';
 import { coreConstant } from '../helpers/coreConstant';
+import { BadRequestException } from '@nestjs/common';
 
 /** Constant containing a Regular Expression
  * with the valid image upload types
@@ -53,4 +54,40 @@ export const multerUploadConfig: MulterOptions = {
   limits: {
     fileSize: maxImageUploadSize,
   },
+};
+
+export const uploadFile = async (file: Express.Multer.File, userId: number): Promise<string | null> => {
+  console.log('Received file in uploadFile:', file);
+  if (!file) {
+    console.warn('No file provided for upload');
+    return null;
+  }
+
+  if (file.path) {
+    // File is already saved by Multer, just return the URL
+    const relativePath = path.relative(coreConstant.FILE_DESTINATION, file.path);
+    const url = `${coreConstant.FILE_DESTINATION}/${relativePath.replace(/\\/g, '/')}`;
+    console.log('File already uploaded. URL:', url);
+    return url;
+  }
+
+  if (!file.buffer) {
+    console.warn('No file buffer provided for upload');
+    return null;
+  }
+
+  const fileName = `${Date.now()}-${file.originalname}`;
+  const filePath = path.join(coreConstant.FILE_DESTINATION, `${userId}`, fileName);
+
+  try {
+    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.promises.writeFile(filePath, file.buffer);
+    
+    const url = `${coreConstant.FILE_DESTINATION}/${userId}/${fileName}`;
+    console.log('File uploaded successfully. URL:', url);
+    return url;
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    return null;
+  }
 };

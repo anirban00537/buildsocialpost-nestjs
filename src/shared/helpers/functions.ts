@@ -14,7 +14,7 @@ export async function setApp(nestapp) {
   app = nestapp;
 
   PrismaClient = app.get(PrismaService);
-  // myLogger = await app.resolve(MyLogger);
+  myLogger = await app.resolve(MyLogger);
 }
 export function createUniqueCode() {
   let date = new Date().getTime();

@@ -11,6 +11,9 @@ import { UsersModule } from '../users/users.module';
 import { MailModule } from 'src/shared/mail/mail.module';
 import { ApiSecretCheckMiddleware } from 'src/shared/middlewares/apisecret.middleware';
 import { coreConstant } from 'src/shared/helpers/coreConstant';
+import { BrandingModule } from '../branding/branding.module';
+import { CarouselModule } from '../carousel/carousel.module';
+import { LoggerModule } from '../logger/logger.module';
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { coreConstant } from 'src/shared/helpers/coreConstant';
     AuthModule,
     UsersModule,
     MailModule,
+    BrandingModule,
+    CarouselModule,
+    LoggerModule,
   ],
   providers: [
     {

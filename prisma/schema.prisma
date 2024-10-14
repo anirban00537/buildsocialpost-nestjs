@@ -37,7 +37,7 @@ model User {
   Carousel              Carousel[]
   UserBranding          UserBranding?
   Image                 Image[]
-  login_provider       String @db.VarChar(50)
+  login_provider        String                  @db.VarChar(50)
 }
 
 model UserTokens {
@@ -95,7 +95,7 @@ model Carousel {
 
 model UserBranding {
   id       String  @id @default(uuid())
-  userId   Int     @unique // Changed from String to Int
+  userId   Int     @unique
   name     String
   handle   String
   headshot String?

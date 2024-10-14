@@ -1,5 +1,5 @@
 import * as winston from 'winston';
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 import { createLogger, LoggerOptions } from 'winston';
 import { Injectable, LoggerService } from '@nestjs/common';
 
@@ -99,29 +99,21 @@ export class MyLogger implements LoggerService {
     this.logger.configure(options);
   }
 
-  // this method just for printing a cool log in your terminal , using chalk
   private logToConsole(level: string, message: string): void {
     let result;
-    const color = chalk.default;
     const currentDate = new Date();
     const time = `${currentDate.getHours()}:${currentDate.getMinutes()}:${currentDate.getSeconds()}`;
 
     switch (level) {
       default:
       case 'info':
-        result = `[${color.blue('INFO')}] ${color.dim.yellow.bold.underline(
-          time,
-        )} [${color.green(this.context)}] ${message}`;
+        result = chalk`[{blue INFO}] {dim.yellow.bold.underline ${time}} [{green ${this.context}}] ${message}`;
         break;
       case 'error':
-        result = `[${color.red('ERR')}] ${color.dim.yellow.bold.underline(
-          time,
-        )} [${color.green(this.context)}] ${message}`;
+        result = chalk`[{red ERR}] {dim.yellow.bold.underline ${time}} [{green ${this.context}}] ${message}`;
         break;
       case 'warn':
-        result = `[${color.yellow('WARN')}] ${color.dim.yellow.bold.underline(
-          time,
-        )} [${color.green(this.context)}] ${message}`;
+        result = chalk`[{yellow WARN}] {dim.yellow.bold.underline ${time}} [{green ${this.context}}] ${message}`;
         break;
     }
     console.log(result); // TODO: DON'T remove this console.log

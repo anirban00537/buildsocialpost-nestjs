@@ -18,18 +18,13 @@ import { coreConstant } from 'src/shared/helpers/coreConstant';
 import { ResponseModel } from 'src/shared/models/response.model';
 import { UserInfo } from 'src/shared/decorators/user.decorators';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { query } from 'express';
-import { userInfo } from 'os';
-import { use } from 'passport';
+import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 
 @Controller('user')
 export class UserController {
-  /** Exposes user CRUD endpoints
-   *
-   * Instantiate class and UserService dependency
-   */
+
   constructor(private readonly userService: UsersService) {}
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Get('profile')
   getProfile(@Request() req) {
     let user = req.user;
