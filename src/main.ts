@@ -44,6 +44,6 @@ async function bootstrap() {
     path.join(__dirname, `../../${coreConstant.FILE_DESTINATION}`),
   );
   console.log('Serving at:', `/${coreConstant.FILE_DESTINATION}`);
-  await app.listen(configService.get('APP_PORT') || 3000);
+  await app.listen(configService.get('APP_PORT') || 3001);
 }
 bootstrap();
