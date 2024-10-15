@@ -66,13 +66,26 @@ export class CarouselService {
         where: {
           id: updateCarouselDto.id,
         },
-        data: updateCarouselDto,
+        data: {
+          background: updateCarouselDto.background,
+          slides: updateCarouselDto.slides,
+          titleTextSettings: updateCarouselDto.titleTextSettings,
+          descriptionTextSettings: updateCarouselDto.descriptionTextSettings,
+          taglineTextSettings: updateCarouselDto.taglineTextSettings,
+          layout: updateCarouselDto.layout,
+          fontFamily: updateCarouselDto.fontFamily,
+          name: updateCarouselDto.name,
+          globalBackground: updateCarouselDto.globalBackground ?? {},
+          sharedSelectedElement: updateCarouselDto.sharedSelectedElement ?? {},
+          
+        },
       });
       if (!carousel) {
         return errorResponse('Carousel not updated');
       }
       return successResponse('Carousel updated successfully', carousel);
     } catch (error) {
+      console.log(error);
       return errorResponse('Carousel not updated');
     }
   }

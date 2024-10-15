@@ -3,16 +3,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUpdateBrandingDto } from './dto/create-update-branding.dto';
 import { UserBranding } from '@prisma/client';
 import { ResponseModel } from 'src/shared/models/response.model';
-import {
-  errorResponse,
-  myLogger,
-  successResponse,
-} from 'src/shared/helpers/functions';
-import * as fs from 'fs';
-import * as path from 'path';
-import { coreConstant } from 'src/shared/helpers/coreConstant';
+import { errorResponse, successResponse } from 'src/shared/helpers/functions';
 import { uploadFile } from 'src/shared/configs/multer-upload.config';
-import { MyLogger } from '../logger/logger.service';
+import { plainToClass } from 'class-transformer';
+import { BrandingResponseDto } from './dto/branding-response.dto';
 
 @Injectable()
 export class BrandingService {
@@ -80,8 +74,9 @@ export class BrandingService {
       if (!userBranding) {
         return errorResponse('Branding not found');
       }
+      const brandingResponse = plainToClass(BrandingResponseDto, userBranding);
       return successResponse('Branding retrieved successfully', {
-        branding: userBranding,
+        branding: brandingResponse,
       });
     } catch (error) {
       console.error('Error in getBranding:', error);

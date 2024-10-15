@@ -14,6 +14,7 @@ import { coreConstant } from 'src/shared/helpers/coreConstant';
 import { BrandingModule } from '../branding/branding.module';
 import { CarouselModule } from '../carousel/carousel.module';
 import { LoggerModule } from '../logger/logger.module';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { LoggerModule } from '../logger/logger.module';
     BrandingModule,
     CarouselModule,
     LoggerModule,
+    SubscriptionModule,
   ],
   providers: [
     {

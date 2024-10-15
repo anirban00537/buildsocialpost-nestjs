@@ -7,6 +7,7 @@ import {
   UploadedFile,
   Param,
   Req,
+  ClassSerializerInterceptor,
 } from '@nestjs/common';
 import { BrandingService } from './branding.service';
 import { CreateUpdateBrandingDto } from './dto/create-update-branding.dto';
@@ -18,10 +19,11 @@ import { Request } from 'express';
 import { userInfo } from 'os';
 
 @Controller('branding')
+@UseInterceptors(ClassSerializerInterceptor)
 export class BrandingController {
   constructor(private readonly brandingService: BrandingService) {}
 
-  @Post(':userId')
+  @Post('create-update-branding')
   @UseInterceptors(FileInterceptor('headshot', multerUploadConfig))
   async createUpdateBranding(
     @Body() createUpdateBrandingDto: CreateUpdateBrandingDto,

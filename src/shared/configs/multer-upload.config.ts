@@ -2,9 +2,7 @@ import { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer
 import { diskStorage } from 'multer';
 import path from 'path';
 import fs from 'fs'; // Import the 'fs' module for file system operations
-import { PrismaClient } from '../helpers/functions';
 import { coreConstant } from '../helpers/coreConstant';
-import { BadRequestException } from '@nestjs/common';
 
 /** Constant containing a Regular Expression
  * with the valid image upload types
@@ -29,11 +27,8 @@ export const multerUploadConfig: MulterOptions = {
     destination: uploadDirectory, // Use the 'uploads' directory
     filename: (request, file, callback) => {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      const user: any = request.user;
-      const { originalname, mimetype, path } = file;
-
-      const fileName = `${uniqueSuffix}-${file.originalname}`;
-
+      const fileExtension = path.extname(file.originalname).toLowerCase();
+      const fileName = `${uniqueSuffix}${fileExtension}`;
       return callback(null, fileName);
     },
   }),
@@ -47,8 +42,7 @@ export const multerUploadConfig: MulterOptions = {
     if (mimetype && extname) {
       return callback(null, true);
     }
-
-    // return callback(new FileTypeError(validImageUploadTypesRegex), false);
+    callback(new Error('Invalid file type'), false);
   },
 
   limits: {
@@ -56,38 +50,23 @@ export const multerUploadConfig: MulterOptions = {
   },
 };
 
-export const uploadFile = async (file: Express.Multer.File, userId: number): Promise<string | null> => {
+export const uploadFile = async (
+  file: Express.Multer.File,
+  userId: number,
+): Promise<string | null> => {
   console.log('Received file in uploadFile:', file);
-  if (!file) {
-    console.warn('No file provided for upload');
+  if (!file || !file.path) {
+    console.warn('No file or file path provided for upload');
     return null;
   }
 
-  if (file.path) {
-    // File is already saved by Multer, just return the URL
-    const relativePath = path.relative(coreConstant.FILE_DESTINATION, file.path);
-    const url = `${coreConstant.FILE_DESTINATION}/${relativePath.replace(/\\/g, '/')}`;
-    console.log('File already uploaded. URL:', url);
-    return url;
-  }
+  // Construct the URL based on the file path
+  const relativePath = path.relative(coreConstant.FILE_DESTINATION, file.path);
+  const url = `${coreConstant.FILE_DESTINATION}/${relativePath.replace(
+    /\\/g,
+    '/',
+  )}`;
+  console.log('File URL:', url);
 
-  if (!file.buffer) {
-    console.warn('No file buffer provided for upload');
-    return null;
-  }
-
-  const fileName = `${Date.now()}-${file.originalname}`;
-  const filePath = path.join(coreConstant.FILE_DESTINATION, `${userId}`, fileName);
-
-  try {
-    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.promises.writeFile(filePath, file.buffer);
-    
-    const url = `${coreConstant.FILE_DESTINATION}/${userId}/${fileName}`;
-    console.log('File uploaded successfully. URL:', url);
-    return url;
-  } catch (error) {
-    console.error('Error uploading file:', error);
-    return null;
-  }
+  return url;
 };

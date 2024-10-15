@@ -11,6 +11,8 @@ import { coreConstant } from './shared/helpers/coreConstant';
 import { MyLogger } from './modules/logger/logger.service';
 import { AppModule } from './modules/app/app.module';
 import express from 'express';
+import { ClassSerializerInterceptor } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -55,6 +57,8 @@ async function bootstrap() {
   app.enableCors(); // If needed
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   await app.listen(configService.get('APP_PORT') || 3001);
 }
