@@ -1,9 +1,6 @@
-import { IsString, IsInt, IsUUID, IsObject, IsOptional } from 'class-validator';
+import { IsString, IsObject, IsOptional, IsArray } from 'class-validator';
 
 export class CreateCarouselDto {
-  @IsInt()
-  userId: number;
-
   @IsString()
   name: string;
 
@@ -22,8 +19,8 @@ export class CreateCarouselDto {
   @IsObject()
   background: Record<string, any>;
 
-  @IsObject()
-  slides: Record<string, any>;
+  @IsArray()
+  slides: Array<any>;
 
   @IsOptional()
   @IsObject()
@@ -34,5 +31,5 @@ export class CreateCarouselDto {
 
   @IsOptional()
   @IsObject()
-  globalBackground?: Record<string, any>;
+  globalBackground?: Record<string, any> | null;
 }

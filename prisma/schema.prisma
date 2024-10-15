@@ -77,14 +77,14 @@ model Carousel {
   id                      String   @id @default(uuid())
   userId                  Int // Changed from String to Int
   name                    String
-  titleTextSettings       Json
-  descriptionTextSettings Json
-  taglineTextSettings     Json
-  layout                  Json
-  background              Json
-  slides                  Json
+  titleTextSettings       Json?
+  descriptionTextSettings Json?
+  taglineTextSettings     Json?
+  layout                  Json?
+  background              Json?
+  slides                  Json?
   sharedSelectedElement   Json?
-  fontFamily              String
+  fontFamily              String? 
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
   globalBackground        Json?

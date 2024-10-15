@@ -26,10 +26,19 @@ export class CarouselService {
     user: User,
   ): Promise<ResponseModel> {
     try {
-      const { userId, ...carouselData } = createCarouselDto;
       const carousel = await this.prisma.carousel.create({
         data: {
-          ...carouselData,
+          background: createCarouselDto.background,
+          slides: createCarouselDto.slides,
+          titleTextSettings: createCarouselDto.titleTextSettings,
+          descriptionTextSettings: createCarouselDto.descriptionTextSettings,
+          taglineTextSettings: createCarouselDto.taglineTextSettings,
+          layout: createCarouselDto.layout,
+          fontFamily: createCarouselDto.fontFamily,
+          name: createCarouselDto.name,
+          globalBackground: createCarouselDto.globalBackground ?? {},
+          sharedSelectedElement: createCarouselDto.sharedSelectedElement ?? {},
+
           user: {
             connect: {
               id: user.id,
@@ -37,11 +46,13 @@ export class CarouselService {
           },
         },
       });
+
       if (!carousel) {
         return errorResponse('Carousel not created');
       }
       return successResponse('Carousel created successfully', carousel);
     } catch (error) {
+      console.error('Error creating carousel:', error);
       return errorResponse('Carousel not created');
     }
   }
@@ -51,12 +62,11 @@ export class CarouselService {
     user: User,
   ): Promise<ResponseModel> {
     try {
-      const { id, ...carouselData } = updateCarouselDto;
       const carousel = await this.prisma.carousel.update({
         where: {
-          id,
+          id: updateCarouselDto.id,
         },
-        data: carouselData,
+        data: updateCarouselDto,
       });
       if (!carousel) {
         return errorResponse('Carousel not updated');
