@@ -16,9 +16,22 @@ export interface PaginatedResult<T> {
   };
 }
 
+type PrismaModel = keyof Omit<
+  PrismaService,
+  | '$on'
+  | '$connect'
+  | '$disconnect'
+  | '$use'
+  | '$executeRaw'
+  | '$executeRawUnsafe'
+  | '$queryRaw'
+  | '$queryRawUnsafe'
+  | '$transaction'
+>;
+
 export async function paginatedQuery<T>(
   prisma: PrismaService,
-  model: any,
+  model: PrismaModel,
   where: any,
   options: PaginationOptions = {}
 ): Promise<PaginatedResult<T>> {
@@ -26,13 +39,13 @@ export async function paginatedQuery<T>(
   const skip = (page - 1) * pageSize;
 
   const [items, totalCount] = await Promise.all([
-    prisma[model].findMany({
+    (prisma[model] as any).findMany({
       where,
       skip,
       take: pageSize,
       orderBy,
     }),
-    prisma[model].count({ where }),
+    (prisma[model] as any).count({ where }),
   ]);
 
   const totalPages = Math.ceil(totalCount / pageSize);
