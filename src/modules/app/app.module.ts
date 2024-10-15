@@ -15,6 +15,7 @@ import { BrandingModule } from '../branding/branding.module';
 import { CarouselModule } from '../carousel/carousel.module';
 import { LoggerModule } from '../logger/logger.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
+import { FileModule } from '../file/file.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SubscriptionModule } from '../subscription/subscription.module';
     CarouselModule,
     LoggerModule,
     SubscriptionModule,
+    FileModule,
   ],
   providers: [
     {
