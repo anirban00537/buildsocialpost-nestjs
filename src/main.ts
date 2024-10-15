@@ -30,12 +30,13 @@ async function bootstrap() {
   );
   app.use(cookieParser());
 
-  app.useStaticAssets(
-    path.join(__dirname, `../../${coreConstant.FILE_DESTINATION}`),
-    {
-      prefix: `/${coreConstant.FILE_DESTINATION}`,
-    },
-  );
+  const staticAssetsPath = path.join(__dirname, '..', '..', coreConstant.FILE_DESTINATION);
+  console.log('Full static assets path:', staticAssetsPath);
+  console.log('Static assets serve prefix:', `/${coreConstant.FILE_DESTINATION}/`);
+
+  app.useStaticAssets(staticAssetsPath, {
+    prefix: `/${coreConstant.FILE_DESTINATION}/`,
+  });
   // setApp(app);
   app.useGlobalPipes(
     new ValidationPipe({

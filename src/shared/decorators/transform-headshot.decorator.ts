@@ -2,12 +2,12 @@ import { Transform } from 'class-transformer';
 
 export function TransformHeadshot(prefix: string) {
   return Transform(({ value }) => {
-    if (value && typeof value === 'string' && !value.startsWith(prefix)) {
-      // Ensure prefix ends with a slash
-      const adjustedPrefix = prefix.endsWith('/') ? prefix : `${prefix}/`;
-      // Ensure value doesn't start with a slash
-      const adjustedValue = value.startsWith('/') ? value.slice(1) : value;
-      return `${adjustedPrefix}${adjustedValue}`;
+    if (value && typeof value === 'string') {
+      if (value.startsWith('/')) {
+        return `${prefix}${value}`;
+      } else if (!value.startsWith('http')) {
+        return `${prefix}/${value}`;
+      }
     }
     return value;
   });

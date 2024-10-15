@@ -60,9 +60,8 @@ export const uploadFile = async (
     return null;
   }
 
-  // Construct the URL based on the file path
   const relativePath = path.relative(coreConstant.FILE_DESTINATION, file.path);
-  const url = `${coreConstant.FILE_DESTINATION}/${relativePath.replace(
+  const url = `/${coreConstant.FILE_DESTINATION}/${relativePath.replace(
     /\\/g,
     '/',
   )}`;
