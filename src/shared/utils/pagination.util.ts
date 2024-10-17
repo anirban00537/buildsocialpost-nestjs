@@ -35,15 +35,18 @@ export async function paginatedQuery<T>(
   where: any,
   options: PaginationOptions = {}
 ): Promise<PaginatedResult<T>> {
-  const { page = 1, pageSize = 10, orderBy = { createdAt: 'desc' } } = options;
+  const { page = 1, pageSize = 10, orderBy = {} } = options;
   const skip = (page - 1) * pageSize;
+
+  // If orderBy is empty, default to ordering by 'id' in descending order
+  const finalOrderBy = Object.keys(orderBy).length === 0 ? { id: 'desc' } : orderBy;
 
   const [items, totalCount] = await Promise.all([
     (prisma[model] as any).findMany({
       where,
       skip,
       take: pageSize,
-      orderBy,
+      orderBy: finalOrderBy,
     }),
     (prisma[model] as any).count({ where }),
   ]);

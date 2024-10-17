@@ -16,29 +16,20 @@ import {
   parseColorPaletteToJSON,
 } from 'src/shared/helpers/openai';
 import { GenerateCarouselContentDto } from './dto/generate-caorusel-content.dto';
+import { Carousel } from '@prisma/client';
 
 @Injectable()
 export class CarouselService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createCarousel(
-    createCarouselDto: CreateCarouselDto,
+    createCarouselDto: Carousel,
     user: User,
   ): Promise<ResponseModel> {
     try {
       const carousel = await this.prisma.carousel.create({
         data: {
-          background: createCarouselDto.background,
-          slides: createCarouselDto.slides,
-          titleTextSettings: createCarouselDto.titleTextSettings,
-          descriptionTextSettings: createCarouselDto.descriptionTextSettings,
-          taglineTextSettings: createCarouselDto.taglineTextSettings,
-          layout: createCarouselDto.layout,
-          fontFamily: createCarouselDto.fontFamily,
-          name: createCarouselDto.name,
-          globalBackground: createCarouselDto.globalBackground ?? {},
-          sharedSelectedElement: createCarouselDto.sharedSelectedElement ?? {},
-
+          data: createCarouselDto.data,
           user: {
             connect: {
               id: user.id,
@@ -58,7 +49,7 @@ export class CarouselService {
   }
 
   async updateCarousel(
-    updateCarouselDto: UpdateCarouselDto,
+    updateCarouselDto: Carousel,
     user: User,
   ): Promise<ResponseModel> {
     try {
@@ -67,17 +58,7 @@ export class CarouselService {
           id: updateCarouselDto.id,
         },
         data: {
-          background: updateCarouselDto.background,
-          slides: updateCarouselDto.slides,
-          titleTextSettings: updateCarouselDto.titleTextSettings,
-          descriptionTextSettings: updateCarouselDto.descriptionTextSettings,
-          taglineTextSettings: updateCarouselDto.taglineTextSettings,
-          layout: updateCarouselDto.layout,
-          fontFamily: updateCarouselDto.fontFamily,
-          name: updateCarouselDto.name,
-          globalBackground: updateCarouselDto.globalBackground ?? {},
-          sharedSelectedElement: updateCarouselDto.sharedSelectedElement ?? {},
-          
+          data: updateCarouselDto.data,
         },
       });
       if (!carousel) {
@@ -131,7 +112,7 @@ export class CarouselService {
         this.prisma,
         'carousel',
         { userId: user.id },
-        options,
+        { ...options, orderBy: { createdAt: 'desc' } },
       );
 
       if (result.items.length === 0) {
@@ -140,6 +121,7 @@ export class CarouselService {
 
       return successResponse('Carousels found successfully', result);
     } catch (error) {
+      console.log(error, 'errosr');
       return errorResponse('Error fetching carousels');
     }
   }

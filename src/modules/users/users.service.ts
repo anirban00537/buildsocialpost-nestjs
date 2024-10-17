@@ -88,22 +88,22 @@ export class UsersService {
         },
       });
       if (user) {
-        const mailKey = generateMailKey();
-        const codeData = {
-          user_id: user.id,
-          code: mailKey,
-          type: coreConstant.VERIFICATION_TYPE_EMAIL,
-        };
-        await this.userCodeService.createUserCode(codeData);
+        // const mailKey = generateMailKey();
+        // const codeData = {
+        //   user_id: user.id,
+        //   code: mailKey,
+        //   type: coreConstant.VERIFICATION_TYPE_EMAIL,
+        // };
+        // await this.userCodeService.createUserCode(codeData);
 
-        const mailData = {
-          verification_code: mailKey,
-        };
-        await this.userCodeService.createUserCode(codeData);
-        this.notificationService.send(
-          new SignupVerificationMailNotification(mailData),
-          user,
-        );
+        // const mailData = {
+        //   verification_code: mailKey,
+        // };
+        // await this.userCodeService.createUserCode(codeData);
+        // this.notificationService.send(
+        //   new SignupVerificationMailNotification(mailData),
+        //   user,
+        // );
         return successResponse('New user created successfully', user);
       }
     } catch (err) {

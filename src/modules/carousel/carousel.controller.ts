@@ -6,6 +6,7 @@ import { User } from '../users/entities/user.entity';
 import { ResponseModel } from 'src/shared/models/response.model';
 import { UpdateCarouselDto } from './dto/update-carousel.dto';
 import { GenerateCarouselContentDto } from './dto/generate-caorusel-content.dto';
+import { Carousel } from '@prisma/client';
 
 @Controller('my-carousels')
 export class CarouselController {
@@ -13,7 +14,7 @@ export class CarouselController {
 
   @Post('create')
   createCarousel(
-    @Body() createCarouselDto: CreateCarouselDto,
+    @Body() createCarouselDto: Carousel,
     @UserInfo() user: User,
   ): Promise<ResponseModel> {
     return this.carouselService.createCarousel(createCarouselDto, user);
@@ -21,7 +22,7 @@ export class CarouselController {
 
   @Put('update')
   updateCarousel(
-    @Body() updateCarouselDto: UpdateCarouselDto,
+    @Body() updateCarouselDto: Carousel,
     @UserInfo() user: User,
   ): Promise<ResponseModel> {
     return this.carouselService.updateCarousel(updateCarouselDto, user);
@@ -33,7 +34,11 @@ export class CarouselController {
   }
 
   @Get('get')
-  getCarousels(@UserInfo() user: User, @Query('page') page: number, @Query('pageSize') pageSize: number): Promise<ResponseModel> {
+  getCarousels(
+    @UserInfo() user: User,
+    @Query('page') page: number,
+    @Query('pageSize') pageSize: number,
+  ): Promise<ResponseModel> {
     return this.carouselService.getCarouselsByUser(user, { page, pageSize });
   }
 
@@ -43,7 +48,9 @@ export class CarouselController {
   }
 
   @Get('generate-carousel-content')
-  generateCarouselContent(@Body() dto: GenerateCarouselContentDto): Promise<ResponseModel> {
+  generateCarouselContent(
+    @Body() dto: GenerateCarouselContentDto,
+  ): Promise<ResponseModel> {
     return this.carouselService.generateCarouselContent(dto);
   }
 }
