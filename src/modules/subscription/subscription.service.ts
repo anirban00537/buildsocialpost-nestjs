@@ -125,7 +125,7 @@ export class SubscriptionService {
           attributes: {
             checkout_data: {
               custom: {
-                user_id: dbUser.id,
+                user_id: dbUser.id.toString(), // Convert to string
               },
             },
             product_options: {
