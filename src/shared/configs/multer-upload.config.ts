@@ -12,11 +12,9 @@ export const validImageUploadTypesRegex = /jpeg|jpg|png/;
 /** Constant that sets the maximum image upload file size */
 export const maxImageUploadSize = 3 * 1024 * 1024; // 3MB
 
-// Create the 'uploads' directory if it doesn't exist
-const uploadDirectory = `./${coreConstant.FILE_DESTINATION}`;
-if (!fs.existsSync(uploadDirectory)) {
-  fs.mkdirSync(uploadDirectory);
-}
+// Create the upload directory if it doesn't exist
+const uploadDirectory = path.resolve(process.cwd(), coreConstant.FILE_DESTINATION);
+fs.mkdirSync(uploadDirectory, { recursive: true });
 
 /** Configurations for the multer library used for file upload.
  *
@@ -60,7 +58,7 @@ export const uploadFile = async (
     return null;
   }
 
-  const relativePath = path.relative(coreConstant.FILE_DESTINATION, file.path);
+  const relativePath = path.relative(uploadDirectory, file.path);
   const url = `/${coreConstant.FILE_DESTINATION}/${relativePath.replace(
     /\\/g,
     '/',
