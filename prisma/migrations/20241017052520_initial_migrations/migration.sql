@@ -46,6 +46,7 @@ CREATE TABLE "Subscription" (
     "status" TEXT NOT NULL,
     "endDate" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     "productName" TEXT NOT NULL,
     "variantName" TEXT NOT NULL,
     "subscriptionLengthInMonths" INTEGER NOT NULL,
@@ -59,18 +60,9 @@ CREATE TABLE "Subscription" (
 CREATE TABLE "Carousel" (
     "id" TEXT NOT NULL,
     "userId" INTEGER NOT NULL,
-    "name" TEXT NOT NULL,
-    "titleTextSettings" JSONB,
-    "descriptionTextSettings" JSONB,
-    "taglineTextSettings" JSONB,
-    "layout" JSONB,
-    "background" JSONB,
-    "slides" JSONB,
-    "sharedSelectedElement" JSONB,
-    "fontFamily" TEXT,
+    "data" JSONB NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "globalBackground" JSONB,
 
     CONSTRAINT "Carousel_pkey" PRIMARY KEY ("id")
 );
@@ -82,6 +74,8 @@ CREATE TABLE "UserBranding" (
     "name" TEXT NOT NULL,
     "handle" TEXT NOT NULL,
     "headshot" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "UserBranding_pkey" PRIMARY KEY ("id")
 );
