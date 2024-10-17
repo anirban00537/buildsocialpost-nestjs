@@ -1,6 +1,5 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import * as path from 'path';
 import { ConfigService } from '@nestjs/config';
@@ -21,13 +20,14 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   setApp(app);
   app.setGlobalPrefix(API_PREFIX);
-  app.use(
-    cors({
-      origin: process.env.FRONTEND_URL,
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      credentials: true,
-    }),
-  );
+
+  // Enable CORS for all origins
+  app.enableCors({
+    origin: '*', // This allows all origins
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  });
+
   app.use(cookieParser());
 
   const staticAssetsPath = path.join(
@@ -45,7 +45,7 @@ async function bootstrap() {
   app.useStaticAssets(staticAssetsPath, {
     prefix: `/${coreConstant.FILE_DESTINATION}/`,
   });
-  // setApp(app);
+
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
@@ -62,12 +62,6 @@ async function bootstrap() {
   // Use MyLogger
   const logger = app.get(MyLogger);
   app.useLogger(logger);
-
-  app.enableCors({
-    origin: ['https://buildsocialpost.com', 'http://localhost:3000'], // Add any other origins you need
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    credentials: true,
-  });
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
