@@ -30,9 +30,17 @@ async function bootstrap() {
   );
   app.use(cookieParser());
 
-  const staticAssetsPath = path.join(__dirname, '..', '..', coreConstant.FILE_DESTINATION);
+  const staticAssetsPath = path.join(
+    __dirname,
+    '..',
+    '..',
+    coreConstant.FILE_DESTINATION,
+  );
   console.log('Full static assets path:', staticAssetsPath);
-  console.log('Static assets serve prefix:', `/${coreConstant.FILE_DESTINATION}/`);
+  console.log(
+    'Static assets serve prefix:',
+    `/${coreConstant.FILE_DESTINATION}/`,
+  );
 
   app.useStaticAssets(staticAssetsPath, {
     prefix: `/${coreConstant.FILE_DESTINATION}/`,
@@ -55,9 +63,8 @@ async function bootstrap() {
   const logger = app.get(MyLogger);
   app.useLogger(logger);
 
-  const corsOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [];
   app.enableCors({
-    origin: corsOrigins,
+    origin: ['https://buildsocialpost.com', 'http://localhost:3000'], // Add any other origins you need
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
   });
