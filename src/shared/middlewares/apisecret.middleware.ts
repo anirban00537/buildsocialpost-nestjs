@@ -6,10 +6,7 @@ export class ApiSecretCheckMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
     const appUrl = req.originalUrl;
     const arr = appUrl.split('/');
-    if (
-      (arr[1] && arr[1] === `${coreConstant.FILE_DESTINATION}`) ||
-      appUrl.startsWith('/api/subscription/webhook')
-    ) {
+    if (arr[1] && arr[1] == `${coreConstant.FILE_DESTINATION}`) {
       next();
     } else {
       if (req.headers['apisecretkeycheck'] !== process.env.API_SECRET) {
