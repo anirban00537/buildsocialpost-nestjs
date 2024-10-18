@@ -12,7 +12,7 @@ import * as crypto from 'crypto';
 import { Public } from 'src/shared/decorators/public.decorator';
 import { successResponse } from 'src/shared/helpers/functions';
 
-@Controller('webhook')
+@Controller('subscription/webhook')
 export class SubscriptionWebhookController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
   @Public()
