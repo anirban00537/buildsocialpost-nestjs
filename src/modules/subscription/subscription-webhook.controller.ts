@@ -12,7 +12,7 @@ import * as crypto from 'crypto';
 import { Public } from 'src/shared/decorators/public.decorator';
 import { successResponse } from 'src/shared/helpers/functions';
 
-@Controller('subscription/webhook')
+@Controller('webhook')
 export class SubscriptionWebhookController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
   @Public()
@@ -27,6 +27,9 @@ export class SubscriptionWebhookController {
         eventType,
         signature,
       });
+      if (!eventType || !signature) {
+        throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
+      }
       const rawBody = await this.getRawBody(req);
       this.verifySignature(rawBody, signature);
 
