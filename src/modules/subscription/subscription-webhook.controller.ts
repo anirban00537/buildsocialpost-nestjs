@@ -36,7 +36,7 @@ export class SubscriptionWebhookController {
       const body = JSON.parse(rawBody);
 
       if (eventType === 'order_created') {
-        console.log('order_created', body);
+        console.log('order_created ,', body);
         await this.handleOrderCreated(body);
       }
       console.log('Webhook received', {
