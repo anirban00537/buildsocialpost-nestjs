@@ -9,11 +9,13 @@ import {
 import { Request } from 'express';
 import { SubscriptionService } from './subscription.service';
 import * as crypto from 'crypto';
+import { Public } from 'src/shared/decorators/public.decorator';
+import { successResponse } from 'src/shared/helpers/functions';
 
 @Controller('subscription/webhook')
 export class SubscriptionWebhookController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
-
+  @Public()
   @Post()
   async handleWebhook(
     @Req() req: Request,
@@ -21,19 +23,33 @@ export class SubscriptionWebhookController {
     @Headers('X-Signature') signature: string,
   ) {
     try {
+      console.log('Webhook received', {
+        eventType,
+        signature,
+      });
       const rawBody = await this.getRawBody(req);
       this.verifySignature(rawBody, signature);
 
       const body = JSON.parse(rawBody);
 
       if (eventType === 'order_created') {
+        console.log('order_created', body);
         await this.handleOrderCreated(body);
       }
-
-      return { message: 'Webhook received' };
+      console.log('Webhook received', {
+        eventType,
+        body,
+      });
+      return successResponse('Webhook received', {
+        eventType,
+        body,
+      });
     } catch (err) {
       console.error(err);
-      throw new HttpException('Server error', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        err.message || 'Server error',
+        err.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 

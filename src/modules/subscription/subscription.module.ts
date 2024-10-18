@@ -4,10 +4,11 @@ import { SubscriptionController } from './subscription.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '@nestjs/config';
+import { SubscriptionWebhookController } from './subscription-webhook.controller';
 
 @Module({
   imports: [PrismaModule, HttpModule, ConfigModule],
-  controllers: [SubscriptionController],
-  providers: [SubscriptionService]
+  controllers: [SubscriptionController, SubscriptionWebhookController],
+  providers: [SubscriptionService],
 })
 export class SubscriptionModule {}
