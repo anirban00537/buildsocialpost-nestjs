@@ -22,37 +22,41 @@ export class SubscriptionWebhookController {
     @Headers('X-Event-Name') eventType: string,
     @Headers('X-Signature') signature: string,
   ) {
-    try {
-      console.log('Webhook received', {
-        eventType,
-        signature,
-      });
-      if (!eventType || !signature) {
-        console.log('Invalid signature');
-        throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
-      }
-      const rawBody = await this.getRawBody(req);
-      console.log('rawBody', rawBody);
-      this.verifySignature(rawBody, signature);
+    console.log('Webhook receiveddddddddddddd', { eventType, signature });
 
+    try {
+      if (!eventType || !signature) {
+        console.log('Invalid eventType or signature');
+        throw new HttpException('Invalid eventType or signature', HttpStatus.UNAUTHORIZED);
+      }
+
+      console.log('Getting raw body');
+      const rawBody = await this.getRawBody(req);
+      console.log('Raw body received', rawBody.substring(0, 100) + '...'); // Log first 100 characters
+
+      console.log('Verifying signature');
+      this.verifySignature(rawBody, signature);
+      console.log('Signature verified');
+
+      console.log('Parsing body');
       const body = JSON.parse(rawBody);
-      console.log('body', body);
+      console.log('Body parsed', JSON.stringify(body, null, 2));
 
       if (eventType === 'order_created') {
-        console.log('order_created ,', body);
+        console.log('Handling order_created event');
         await this.handleOrderCreated(body);
+        console.log('Order created event handled');
+      } else {
+        console.log(`Unhandled event type: ${eventType}`);
       }
-      console.log('Webhook received', {
-        eventType,
-        body,
-      });
 
-      return successResponse('Webhook received', {
+      console.log('Webhook processing completed');
+      return successResponse('Webhook received and processed', {
         eventType,
         body,
       });
     } catch (err) {
-      console.error(err);
+      console.error('Error in handleWebhook:', err);
       throw new HttpException(
         err.message || 'Server error',
         err.status || HttpStatus.INTERNAL_SERVER_ERROR,
@@ -74,14 +78,22 @@ export class SubscriptionWebhookController {
   }
 
   private verifySignature(payload: string, signature: string) {
+    console.log('Verifying signature');
     const secret = process.env.NEXT_PUBLIC_LEMONSQUEEZY_WEBHOOK_SIGNATURE || '';
+    console.log('Secret length:', secret.length);
+    
     const hmac = crypto.createHmac('sha256', secret);
     const digest = Buffer.from(hmac.update(payload).digest('hex'), 'utf8');
     const signatureBuffer = Buffer.from(signature || '', 'utf8');
 
+    console.log('Calculated signature:', digest.toString('hex'));
+    console.log('Received signature:', signature);
+
     if (!crypto.timingSafeEqual(digest, signatureBuffer)) {
+      console.log('Signature verification failed');
       throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
     }
+    console.log('Signature verified successfully');
   }
 
   private async handleOrderCreated(body: any) {
