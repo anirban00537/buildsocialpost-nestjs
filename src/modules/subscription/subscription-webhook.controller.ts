@@ -16,7 +16,7 @@ import { ConfigService } from '@nestjs/config';
 export class SubscriptionWebhookController {
   constructor(
     private readonly subscriptionService: SubscriptionService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
   ) {}
 
   @Public()
@@ -28,8 +28,9 @@ export class SubscriptionWebhookController {
   ) {
     try {
       const rawBody = await this.getRawBody(req);
+      console.log('rawBody', rawBody);
       const body = JSON.parse(rawBody);
-
+      console.log('body', body);
       console.log('Webhook received', JSON.stringify(body, null, 2));
       console.log('Event type:', eventType);
       console.log('Signature:', signature);
@@ -63,8 +64,12 @@ export class SubscriptionWebhookController {
   private async getRawBody(req: Request): Promise<string> {
     return new Promise((resolve, reject) => {
       let data = '';
-      req.on('data', chunk => { data += chunk; });
-      req.on('end', () => { resolve(data); });
+      req.on('data', (chunk) => {
+        data += chunk;
+      });
+      req.on('end', () => {
+        resolve(data);
+      });
       req.on('error', reject);
     });
   }
@@ -84,7 +89,9 @@ export class SubscriptionWebhookController {
     } else if (variantName.includes('monthly')) {
       subscriptionLengthInMonths = 1;
     } else {
-      console.warn(`Unrecognized subscription length for variant: ${variantName}`);
+      console.warn(
+        `Unrecognized subscription length for variant: ${variantName}`,
+      );
     }
 
     // Set end date based on subscription length
