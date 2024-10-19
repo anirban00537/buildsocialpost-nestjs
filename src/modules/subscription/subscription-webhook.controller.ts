@@ -32,12 +32,24 @@ export class SubscriptionWebhookController {
 
     try {
       console.log('Getting raw body');
-      const rawBody = await this.getRawBody(req);
-      console.log('Raw body received:', rawBody);
+      let rawBody: string;
+      try {
+        rawBody = await this.getRawBody(req);
+        console.log('Raw body received successfully');
+      } catch (error) {
+        console.error('Error getting raw body:', error);
+        throw new HttpException('Error getting raw body', HttpStatus.BAD_REQUEST);
+      }
 
       console.log('Parsing body');
-      const body = JSON.parse(rawBody);
-      console.log('Body parsed successfully');
+      let body: any;
+      try {
+        body = JSON.parse(rawBody);
+        console.log('Body parsed successfully');
+      } catch (error) {
+        console.error('Error parsing body:', error);
+        throw new HttpException('Error parsing body', HttpStatus.BAD_REQUEST);
+      }
 
       console.log('Verifying signature');
       const secret =
@@ -71,15 +83,21 @@ export class SubscriptionWebhookController {
   }
 
   private async getRawBody(req: Request): Promise<string> {
+    console.log('Entering getRawBody method');
     return new Promise((resolve, reject) => {
       let data = '';
       req.on('data', (chunk) => {
+        console.log('Received chunk:', chunk);
         data += chunk;
       });
       req.on('end', () => {
+        console.log('Raw body received:', data);
         resolve(data);
       });
-      req.on('error', reject);
+      req.on('error', (error) => {
+        console.error('Error in getRawBody:', error);
+        reject(error);
+      });
     });
   }
 
