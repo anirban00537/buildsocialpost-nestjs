@@ -31,8 +31,19 @@ export class SubscriptionWebhookController {
       }
 
       console.log('Getting raw body');
-      const rawBody = await this.getRawBody(req);
-      console.log('Raw body received', rawBody.substring(0, 100) + '...'); // Log first 100 characters
+      let rawBody;
+      try {
+        rawBody = await this.getRawBody(req);
+        console.log('Raw body received, length:', rawBody.length);
+        if (rawBody.length > 0) {
+          console.log('First 100 characters of raw body:', rawBody.substring(0, 100));
+        } else {
+          console.log('Raw body is empty');
+        }
+      } catch (error) {
+        console.error('Error getting raw body:', error);
+        throw new HttpException('Failed to read request body', HttpStatus.BAD_REQUEST);
+      }
 
       console.log('Verifying signature');
       this.verifySignature(rawBody, signature);
@@ -65,15 +76,29 @@ export class SubscriptionWebhookController {
   }
 
   private async getRawBody(req: Request): Promise<string> {
+    console.log('Starting to read raw body');
     return new Promise((resolve, reject) => {
       let data = '';
       req.on('data', (chunk) => {
+        console.log('Received data chunk, length:', chunk.length);
         data += chunk;
       });
       req.on('end', () => {
+        console.log('Finished reading raw body, total length:', data.length);
         resolve(data);
       });
-      req.on('error', reject);
+      req.on('error', (error) => {
+        console.error('Error reading raw body:', error);
+        reject(error);
+      });
+
+      // Add a timeout to prevent hanging
+      setTimeout(() => {
+        if (data.length === 0) {
+          console.error('Timeout reached while reading raw body');
+          reject(new Error('Timeout reached while reading raw body'));
+        }
+      }, 10000); // 10 seconds timeout
     });
   }
 
