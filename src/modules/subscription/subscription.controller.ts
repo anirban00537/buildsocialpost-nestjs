@@ -40,4 +40,10 @@ export class SubscriptionController {
       body.durationInMonths,
     );
   }
+  @Get('get-all-subscriptions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @IsAdmin()
+  async getAllSubscriptions() {
+    return this.subscriptionService.getAllSubscriptions();
+  }
 }
