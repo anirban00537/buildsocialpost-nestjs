@@ -73,12 +73,15 @@ async function bootstrap() {
     req.rawBody = buf;
   }});
 
-  // Apply JSON parsing to all routes except the webhook route
+  // Raw body parser for the webhook route
+  app.use('/subscription/webhook', express.raw({ type: 'application/json' }));
+
+  // JSON parser for all other routes
   app.use((req, res, next) => {
-    if (req.originalUrl === '/subscription/webhook') {
-      next();
-    } else {
+    if (req.originalUrl !== '/subscription/webhook') {
       express.json()(req, res, next);
+    } else {
+      next();
     }
   });
 
