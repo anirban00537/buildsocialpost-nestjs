@@ -35,37 +35,28 @@ export class SubscriptionWebhookController {
       try {
         rawBody = await this.getRawBody(req);
         console.log('Raw body received, length:', rawBody.length);
-        if (rawBody.length > 0) {
-          console.log('First 100 characters of raw body:', rawBody.substring(0, 100));
+        
+        console.log('Parsing body');
+        const body = JSON.parse(rawBody);
+        console.log('Parsed body:', JSON.stringify(body, null, 2));
+
+        if (eventType === 'order_created') {
+          console.log('Handling order_created event');
+          await this.handleOrderCreated(body);
+          console.log('Order created event handled');
         } else {
-          console.log('Raw body is empty');
+          console.log(`Unhandled event type: ${eventType}`);
         }
+
+        console.log('Webhook processing completed');
+        return successResponse('Webhook received and processed', {
+          eventType,
+          body,
+        });
       } catch (error) {
-        console.error('Error getting raw body:', error);
-        throw new HttpException('Failed to read request body', HttpStatus.BAD_REQUEST);
+        console.error('Error getting or parsing raw body:', error);
+        throw new HttpException('Failed to read or parse request body', HttpStatus.BAD_REQUEST);
       }
-
-      console.log('Verifying signature');
-      this.verifySignature(rawBody, signature);
-      console.log('Signature verified');
-
-      console.log('Parsing body');
-      const body = JSON.parse(rawBody);
-      console.log('Body parsed', JSON.stringify(body, null, 2));
-
-      if (eventType === 'order_created') {
-        console.log('Handling order_created event');
-        await this.handleOrderCreated(body);
-        console.log('Order created event handled');
-      } else {
-        console.log(`Unhandled event type: ${eventType}`);
-      }
-
-      console.log('Webhook processing completed');
-      return successResponse('Webhook received and processed', {
-        eventType,
-        body,
-      });
     } catch (err) {
       console.error('Error in handleWebhook:', err);
       throw new HttpException(
@@ -76,11 +67,6 @@ export class SubscriptionWebhookController {
   }
 
   private async getRawBody(req: Request): Promise<string> {
-    if ((req as any).rawBody) {
-      console.log('Using pre-parsed raw body');
-      return (req as any).rawBody.toString();
-    }
-
     console.log('Starting to read raw body as stream');
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = [];
@@ -95,6 +81,7 @@ export class SubscriptionWebhookController {
       req.on('end', () => {
         const body = Buffer.concat(chunks).toString('utf8');
         console.log(`Finished reading body, total length: ${body.length}`);
+        console.log('Body content:', body);  // Log the entire body content
         resolve(body);
       });
 
