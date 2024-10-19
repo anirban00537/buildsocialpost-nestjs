@@ -5,6 +5,7 @@ import {
   Headers,
   HttpException,
   HttpStatus,
+  RawBodyRequest,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { Public } from 'src/shared/decorators/public.decorator';
@@ -22,7 +23,7 @@ export class SubscriptionWebhookController {
   @Public()
   @Post()
   async handleWebhook(
-    @Req() req: Request & { rawBody?: string },
+    @Req() req: RawBodyRequest<Request>,
     @Headers('X-Event-Name') eventType: string,
     @Headers('X-Signature') signature: string,
   ) {
@@ -36,11 +37,13 @@ export class SubscriptionWebhookController {
       }
 
       const rawBody = req.rawBody;
-      const body = JSON.parse(rawBody);
+      console.log('Raw body:', rawBody);
+      const body = JSON.parse(rawBody.toString('utf8'));
       console.log('Request body:', JSON.stringify(body, null, 2));
 
       // Verify signature
-      const secret = this.configService.get<string>('LEMONSQUEEZY_WEBHOOK_SIGNATURE') || '';
+      const secret =
+        this.configService.get<string>('LEMONSQUEEZY_WEBHOOK_SIGNATURE') || '';
       const hmac = crypto.createHmac('sha256', secret);
       const digest = hmac.update(rawBody).digest('hex');
 
@@ -73,10 +76,10 @@ export class SubscriptionWebhookController {
     const userId = body.meta.custom_data.user_id;
     const isSuccessful = body.data.attributes.status === 'paid';
     const orderCreatedAt = new Date(body.data.attributes.created_at);
-    
+
     const firstOrderItem = body.data.attributes.first_order_item;
     const variantName = firstOrderItem.variant_name.toLowerCase();
-    
+
     // Determine subscription length
     let subscriptionLengthInMonths = 1; // Default to monthly
     if (variantName.includes('yearly') || variantName.includes('annual')) {
@@ -84,7 +87,9 @@ export class SubscriptionWebhookController {
     } else if (variantName.includes('monthly')) {
       subscriptionLengthInMonths = 1;
     } else {
-      console.warn(`Unrecognized subscription length for variant: ${variantName}`);
+      console.warn(
+        `Unrecognized subscription length for variant: ${variantName}`,
+      );
     }
 
     // Set end date based on subscription length
