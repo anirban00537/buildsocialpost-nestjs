@@ -12,11 +12,13 @@ import { AppModule } from './modules/app/app.module';
 import express from 'express';
 import { ClassSerializerInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
     rawBody: true,
+    bodyParser: false
   });
   const configService = app.get(ConfigService);
   setApp(app);
@@ -69,9 +71,14 @@ async function bootstrap() {
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
-  app.useBodyParser('json', { verify: (req: any, res, buf) => {
-    req.rawBody = buf;
-  }});
+  const rawBodyBuffer = (req, res, buf, encoding) => {
+    if (buf && buf.length) {
+      req.rawBody = buf.toString(encoding || 'utf8');
+    }
+  };
+
+  app.use(bodyParser.urlencoded({ verify: rawBodyBuffer, extended: true }));
+  app.use(bodyParser.json({ verify: rawBodyBuffer }));
 
   // Raw body parser for the webhook route
   app.use('/subscription/webhook', express.raw({ type: 'application/json' }));

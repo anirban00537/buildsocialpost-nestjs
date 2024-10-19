@@ -22,7 +22,7 @@ export class SubscriptionWebhookController {
   @Public()
   @Post()
   async handleWebhook(
-    @Req() req: Request & { rawBody?: Buffer },
+    @Req() req: Request & { rawBody?: string },
     @Headers('X-Event-Name') eventType: string,
     @Headers('X-Signature') signature: string,
   ) {
@@ -36,16 +36,15 @@ export class SubscriptionWebhookController {
       }
 
       const rawBody = req.rawBody;
-      const body = JSON.parse(rawBody.toString('utf8'));
+      const body = JSON.parse(rawBody);
       console.log('Request body:', JSON.stringify(body, null, 2));
 
       // Verify signature
       const secret = this.configService.get<string>('LEMONSQUEEZY_WEBHOOK_SIGNATURE') || '';
       const hmac = crypto.createHmac('sha256', secret);
-      const digest = Buffer.from(hmac.update(rawBody).digest('hex'), 'utf8');
-      const signatureBuffer = Buffer.from(signature || '', 'utf8');
+      const digest = hmac.update(rawBody).digest('hex');
 
-      if (!crypto.timingSafeEqual(digest, signatureBuffer)) {
+      if (digest !== signature) {
         console.log('Signature verification failed');
         throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
       }
