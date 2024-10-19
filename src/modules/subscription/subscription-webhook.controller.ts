@@ -24,20 +24,37 @@ export class SubscriptionWebhookController {
   ) {
     try {
       console.log('Webhook received', JSON.stringify(req.body, null, 2));
+      console.log('Event type:', eventType);
+      console.log('Signature:', signature);
+
       if (!eventType || !signature) {
+        console.log('Invalid signature or event type');
+        throw new HttpException('Invalid signature or event type', HttpStatus.UNAUTHORIZED);
+      }
+
+      const rawBody = await this.getRawBody(req);
+      console.log('Raw body:', rawBody);
+
+      try {
+        this.verifySignature(rawBody, signature);
+        console.log('Signature verified successfully');
+      } catch (error) {
+        console.error('Signature verification failed:', error);
         throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
       }
-      const rawBody = await this.getRawBody(req);
-      console.log('rawBody', rawBody);
-      this.verifySignature(rawBody, signature);
 
       const body = JSON.parse(rawBody);
-      console.log('Parsed body', JSON.stringify(body, null, 2));
+      console.log('Parsed body:', JSON.stringify(body, null, 2));
 
       if (eventType === 'order_created') {
         console.log('Handling order_created event');
-        await this.handleOrderCreated(body);
-        console.log('Order created handled successfully');
+        try {
+          await this.handleOrderCreated(body);
+          console.log('Order created handled successfully');
+        } catch (error) {
+          console.error('Error handling order_created event:', error);
+          throw new HttpException('Error handling order_created event', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
       } else {
         console.log(`Unhandled event type: ${eventType}`);
       }
@@ -81,6 +98,7 @@ export class SubscriptionWebhookController {
   }
 
   private async handleOrderCreated(body: any) {
+    console.log('Entering handleOrderCreated method');
     console.log('handleOrderCreated called with body:', JSON.stringify(body, null, 2));
     const userId = body.meta.custom_data.user_id;
     const isSuccessful = body.data.attributes.status === 'paid';
