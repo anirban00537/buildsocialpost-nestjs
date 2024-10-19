@@ -32,9 +32,11 @@ export class SubscriptionWebhookController {
         throw new HttpException('Invalid signature or event type', HttpStatus.UNAUTHORIZED);
       }
 
+      console.log('Getting raw body');
       const rawBody = await this.getRawBody(req);
-      console.log('Raw body:', rawBody);
+      console.log('Raw body received');
 
+      console.log('Verifying signature');
       try {
         this.verifySignature(rawBody, signature);
         console.log('Signature verified successfully');
@@ -43,8 +45,9 @@ export class SubscriptionWebhookController {
         throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
       }
 
+      console.log('Parsing body');
       const body = JSON.parse(rawBody);
-      console.log('Parsed body:', JSON.stringify(body, null, 2));
+      console.log('Body parsed successfully');
 
       if (eventType === 'order_created') {
         console.log('Handling order_created event');
@@ -74,15 +77,20 @@ export class SubscriptionWebhookController {
   }
 
   private async getRawBody(req: Request): Promise<string> {
+    console.log('Entering getRawBody method');
     return new Promise((resolve, reject) => {
       let data = '';
       req.on('data', (chunk) => {
         data += chunk;
       });
       req.on('end', () => {
+        console.log('Raw body received:', data);
         resolve(data);
       });
-      req.on('error', reject);
+      req.on('error', (error) => {
+        console.error('Error getting raw body:', error);
+        reject(error);
+      });
     });
   }
 
