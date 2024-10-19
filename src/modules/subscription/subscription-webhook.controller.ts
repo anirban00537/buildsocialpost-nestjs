@@ -32,9 +32,9 @@ export class SubscriptionWebhookController {
       console.log('Event type:', eventType);
       console.log('Signature:', signature);
 
-      if (!req.rawBody) {
-        throw new HttpException('No raw body found', HttpStatus.BAD_REQUEST);
-      }
+      // if (!req.rawBody) {
+      //   throw new HttpException('No raw body found', HttpStatus.BAD_REQUEST);
+      // }
 
       const rawBody = req.rawBody;
       console.log('Raw body:', rawBody);
