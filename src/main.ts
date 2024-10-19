@@ -12,6 +12,7 @@ import { AppModule } from './modules/app/app.module';
 import express from 'express';
 import { ClassSerializerInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -67,6 +68,12 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+
+  app.use(bodyParser.json({
+    verify: (req: any, res, buf) => {
+      req.rawBody = buf;
+    }
+  }));
 
   await app.listen(configService.get('APP_PORT') || 3001);
 }

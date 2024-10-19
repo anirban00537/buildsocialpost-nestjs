@@ -76,29 +76,32 @@ export class SubscriptionWebhookController {
   }
 
   private async getRawBody(req: Request): Promise<string> {
-    console.log('Starting to read raw body');
+    if ((req as any).rawBody) {
+      console.log('Using pre-parsed raw body');
+      return (req as any).rawBody.toString();
+    }
+
+    console.log('Starting to read raw body as stream');
     return new Promise((resolve, reject) => {
-      let data = '';
-      req.on('data', (chunk) => {
-        console.log('Received data chunk, length:', chunk.length);
-        data += chunk;
-      });
-      req.on('end', () => {
-        console.log('Finished reading raw body, total length:', data.length);
-        resolve(data);
-      });
-      req.on('error', (error) => {
-        console.error('Error reading raw body:', error);
-        reject(error);
+      const chunks: Buffer[] = [];
+      let totalLength = 0;
+
+      req.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
+        totalLength += chunk.length;
+        console.log(`Received chunk, total length so far: ${totalLength}`);
       });
 
-      // Add a timeout to prevent hanging
-      setTimeout(() => {
-        if (data.length === 0) {
-          console.error('Timeout reached while reading raw body');
-          reject(new Error('Timeout reached while reading raw body'));
-        }
-      }, 10000); // 10 seconds timeout
+      req.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf8');
+        console.log(`Finished reading body, total length: ${body.length}`);
+        resolve(body);
+      });
+
+      req.on('error', (err) => {
+        console.error('Error reading body:', err);
+        reject(err);
+      });
     });
   }
 
