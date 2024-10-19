@@ -10,10 +10,12 @@ import { webhookHasData, webhookHasMeta } from './subscription-webhook.utils';
 export const LemonSqueezyRequest = createParamDecorator(
   async (data: unknown, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
+    const secret = process.env.LEMONSQUEEZY_WEBHOOK_SIGNATURE;
 
     if (!secret) {
-      throw new Error('LEMONSQUEEZY_WEBHOOK_SECRET is not set in the environment');
+      throw new Error(
+        'LEMONSQUEEZY_WEBHOOK_SIGNATURE is not set in the environment',
+      );
     }
 
     const signature = request.headers['x-signature'] as string;
@@ -45,4 +47,3 @@ export const LemonSqueezyRequest = createParamDecorator(
     return evt;
   },
 );
-
