@@ -23,10 +23,7 @@ export class SubscriptionWebhookController {
     @Headers('X-Signature') signature: string,
   ) {
     try {
-      console.log('Webhook received', {
-        eventType,
-        signature,
-      });
+      console.log('Webhook received', req);
       if (!eventType || !signature) {
         throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
       }
