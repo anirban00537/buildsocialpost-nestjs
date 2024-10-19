@@ -1,15 +1,17 @@
 import {
   Controller,
   Post,
-  Body,
+  Req,
   Headers,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { Public } from 'src/shared/decorators/public.decorator';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { SubscriptionService } from './subscription.service';
+import getRawBody from 'raw-body';
 
 @Controller('subscription/webhook')
 export class SubscriptionWebhookController {
@@ -21,34 +23,33 @@ export class SubscriptionWebhookController {
   @Public()
   @Post()
   async handleWebhook(
-    @Body() body: any,
+    @Req() req: Request,
     @Headers('X-Event-Name') eventType: string,
     @Headers('X-Signature') signature: string,
   ) {
-    console.log('Webhook endpoint hit');
-    console.log('Event type:', eventType);
-    console.log('Signature:', signature);
-    console.log('Request body:', JSON.stringify(body, null, 2));
-
     try {
+      console.log('Webhook endpoint hit');
+      console.log('Event type:', eventType);
+      console.log('Signature:', signature);
+
+      const rawBody = await getRawBody(req);
+      const body = JSON.parse(rawBody.toString('utf8'));
+      console.log('Request body:', JSON.stringify(body, null, 2));
+
+      // Verify signature
       const secret = this.configService.get<string>('LEMONSQUEEZY_WEBHOOK_SIGNATURE') || '';
-      console.log('Secret (first 4 characters):', secret);
-
       const hmac = crypto.createHmac('sha256', secret);
-      const payload = JSON.stringify(body);
-      const calculatedSignature = hmac.update(payload).digest('hex');
+      const digest = Buffer.from(hmac.update(rawBody).digest('hex'), 'utf8');
+      const signatureBuffer = Buffer.from(signature || '', 'utf8');
 
-      console.log('Calculated signature:', calculatedSignature);
-      console.log('Provided signature:', signature);
-
-      if (calculatedSignature !== signature) {
+      if (!crypto.timingSafeEqual(digest, signatureBuffer)) {
         console.log('Signature verification failed');
         throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
       }
       console.log('Signature verified successfully');
 
+      // Logic based on event type
       if (eventType === 'order_created') {
-        console.log('Handling order_created event');
         await this.handleOrderCreated(body);
       } else {
         console.log(`Unhandled event type: ${eventType}`);
@@ -68,38 +69,28 @@ export class SubscriptionWebhookController {
   private async handleOrderCreated(body: any) {
     console.log('Entering handleOrderCreated method');
     const userId = body.meta.custom_data.user_id;
-    console.log('User ID:', userId);
-
     const isSuccessful = body.data.attributes.status === 'paid';
-    console.log('Is successful:', isSuccessful);
-
     const orderCreatedAt = new Date(body.data.attributes.created_at);
-    console.log('Order created at:', orderCreatedAt);
-
+    
     const firstOrderItem = body.data.attributes.first_order_item;
-    console.log('First order item:', firstOrderItem);
-
     const variantName = firstOrderItem.variant_name.toLowerCase();
-    console.log('Variant name:', variantName);
-
-    let subscriptionLengthInMonths = 1;
+    
+    // Determine subscription length
+    let subscriptionLengthInMonths = 1; // Default to monthly
     if (variantName.includes('yearly') || variantName.includes('annual')) {
       subscriptionLengthInMonths = 12;
     } else if (variantName.includes('monthly')) {
       subscriptionLengthInMonths = 1;
     } else {
-      console.warn(
-        `Unrecognized subscription length for variant: ${variantName}`,
-      );
+      console.warn(`Unrecognized subscription length for variant: ${variantName}`);
     }
-    console.log('Subscription length in months:', subscriptionLengthInMonths);
 
+    // Set end date based on subscription length
     const endDate = new Date(orderCreatedAt);
     endDate.setMonth(endDate.getMonth() + subscriptionLengthInMonths);
-    console.log('End date:', endDate);
 
     const subscriptionData = {
-      userId: parseInt(userId, 10),
+      userId,
       orderId: body.data.id,
       status: isSuccessful ? 'active' : 'pending',
       endDate: endDate,
@@ -110,15 +101,9 @@ export class SubscriptionWebhookController {
       totalAmount: parseFloat(body.data.attributes.total),
       currency: body.data.attributes.currency,
     };
-    console.log('Subscription data:', subscriptionData);
 
-    try {
-      console.log('Creating subscription');
-      await this.subscriptionService.createSubscription(subscriptionData);
-      console.log('Subscription created successfully');
-    } catch (error) {
-      console.error('Error creating subscription:', error);
-      throw error;
-    }
+    console.log('Creating subscription with data:', subscriptionData);
+    await this.subscriptionService.createSubscription(subscriptionData);
+    console.log('Subscription created successfully');
   }
 }
