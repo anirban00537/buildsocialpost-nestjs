@@ -31,23 +31,17 @@ export class SubscriptionWebhookController {
     console.log('Request body:', JSON.stringify(body, null, 2));
 
     try {
-      // Verify signature
       const secret = this.configService.get<string>('LEMONSQUEEZY_WEBHOOK_SIGNATURE') || '';
-      if (!secret) {
-        console.error('LEMONSQUEEZY_WEBHOOK_SIGNATURE is not set');
-        throw new HttpException('Server configuration error', HttpStatus.INTERNAL_SERVER_ERROR);
-      }
-      console.log('Secret (first 4 characters):', secret.substring(0, 4));
-      
+      console.log('Secret (first 4 characters):', secret);
+
       const hmac = crypto.createHmac('sha256', secret);
       const payload = JSON.stringify(body);
-      const digest = Buffer.from(hmac.update(payload).digest('hex'), 'utf8');
-      const signatureBuffer = Buffer.from(signature || '', 'utf8');
+      const calculatedSignature = hmac.update(payload).digest('hex');
 
-      console.log('Calculated digest:', digest.toString('hex'));
+      console.log('Calculated signature:', calculatedSignature);
       console.log('Provided signature:', signature);
 
-      if (!crypto.timingSafeEqual(digest, signatureBuffer)) {
+      if (calculatedSignature !== signature) {
         console.log('Signature verification failed');
         throw new HttpException('Invalid signature', HttpStatus.UNAUTHORIZED);
       }
