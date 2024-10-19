@@ -1,16 +1,15 @@
 import {
   Controller,
   Post,
-  Req,
+  Body,
   Headers,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { Request } from 'express';
-import { SubscriptionService } from './subscription.service';
-import * as crypto from 'crypto';
 import { Public } from 'src/shared/decorators/public.decorator';
 import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
+import { SubscriptionService } from './subscription.service';
 
 @Controller('subscription/webhook')
 export class SubscriptionWebhookController {
@@ -22,40 +21,23 @@ export class SubscriptionWebhookController {
   @Public()
   @Post()
   async handleWebhook(
-    @Req() req: Request,
+    @Body() body: any,
     @Headers('X-Event-Name') eventType: string,
     @Headers('X-Signature') signature: string,
   ) {
     console.log('Webhook endpoint hit');
-    console.log('Request headers:', req.headers);
-    console.log('Request body:', req.body);
+    console.log('Event type:', eventType);
+    console.log('Signature:', signature);
+    console.log('Request body:', JSON.stringify(body, null, 2));
 
     try {
-      console.log('Getting raw body');
-      let rawBody: string;
-      try {
-        rawBody = await this.getRawBody(req);
-        console.log('Raw body received successfully');
-      } catch (error) {
-        console.error('Error getting raw body:', error);
-        throw new HttpException('Error getting raw body', HttpStatus.BAD_REQUEST);
-      }
-
-      console.log('Parsing body');
-      let body: any;
-      try {
-        body = JSON.parse(rawBody);
-        console.log('Body parsed successfully');
-      } catch (error) {
-        console.error('Error parsing body:', error);
-        throw new HttpException('Error parsing body', HttpStatus.BAD_REQUEST);
-      }
-
-      console.log('Verifying signature');
       const secret =
         this.configService.get<string>('LEMONSQUEEZY_WEBHOOK_SIGNATURE') || '';
       const hmac = crypto.createHmac('sha256', secret);
-      const digest = Buffer.from(hmac.update(rawBody).digest('hex'), 'utf8');
+      const digest = Buffer.from(
+        hmac.update(JSON.stringify(body)).digest('hex'),
+        'utf8',
+      );
       const signatureBuffer = Buffer.from(signature || '', 'utf8');
 
       if (!crypto.timingSafeEqual(digest, signatureBuffer)) {
@@ -82,25 +64,6 @@ export class SubscriptionWebhookController {
     }
   }
 
-  private async getRawBody(req: Request): Promise<string> {
-    console.log('Entering getRawBody method');
-    return new Promise((resolve, reject) => {
-      let data = '';
-      req.on('data', (chunk) => {
-        console.log('Received chunk:', chunk);
-        data += chunk;
-      });
-      req.on('end', () => {
-        console.log('Raw body received:', data);
-        resolve(data);
-      });
-      req.on('error', (error) => {
-        console.error('Error in getRawBody:', error);
-        reject(error);
-      });
-    });
-  }
-
   private async handleOrderCreated(body: any) {
     console.log('Entering handleOrderCreated method');
     const userId = body.meta.custom_data.user_id;
@@ -124,7 +87,9 @@ export class SubscriptionWebhookController {
     } else if (variantName.includes('monthly')) {
       subscriptionLengthInMonths = 1;
     } else {
-      console.warn(`Unrecognized subscription length for variant: ${variantName}`);
+      console.warn(
+        `Unrecognized subscription length for variant: ${variantName}`,
+      );
     }
     console.log('Subscription length in months:', subscriptionLengthInMonths);
 
