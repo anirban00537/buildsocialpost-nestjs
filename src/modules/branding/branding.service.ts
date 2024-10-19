@@ -7,6 +7,9 @@ import { errorResponse, successResponse } from 'src/shared/helpers/functions';
 import { uploadFile } from 'src/shared/configs/multer-upload.config';
 import { plainToClass } from 'class-transformer';
 import { BrandingResponseDto } from './dto/branding-response.dto';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { coreConstant } from '../../shared/helpers/coreConstant';
 
 @Injectable()
 export class BrandingService {
@@ -21,14 +24,20 @@ export class BrandingService {
       console.log('Received headshot in service:', headshot);
       let headshotUrl: string | null = null;
 
+      const existingBranding = await this.prisma.userBranding.findUnique({
+        where: { userId },
+      });
+
       if (headshot) {
+        // Delete existing headshot if it exists
+        if (existingBranding && existingBranding.headshot) {
+          await this.deleteExistingHeadshot(existingBranding.headshot);
+        }
+
         headshotUrl = await uploadFile(headshot, userId);
         console.log('Headshot upload result:', headshotUrl);
       }
 
-      const existingBranding = await this.prisma.userBranding.findUnique({
-        where: { userId },
-      });
       let userBranding: UserBranding;
 
       if (existingBranding) {
@@ -38,7 +47,7 @@ export class BrandingService {
           data: {
             name: createUpdateBrandingDto.name,
             handle: createUpdateBrandingDto.handle,
-            headshot: headshotUrl || existingBranding.headshot, // Keep existing headshot if no new file is uploaded
+            headshot: headshotUrl || existingBranding.headshot,
           },
         });
         if (!userBranding) {
@@ -63,6 +72,15 @@ export class BrandingService {
     } catch (error) {
       console.error('Error in createUpdateBranding:', error);
       return errorResponse('Failed to create or update branding');
+    }
+  }
+
+  private async deleteExistingHeadshot(headshotUrl: string): Promise<void> {
+    try {
+      const filePath = path.join(process.cwd(), headshotUrl);
+      await fs.unlink(filePath);
+    } catch (error) {
+      console.error('Error deleting existing headshot:', error);
     }
   }
 

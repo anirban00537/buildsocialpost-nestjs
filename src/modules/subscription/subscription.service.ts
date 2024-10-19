@@ -161,4 +161,47 @@ export class SubscriptionService {
       throw new HttpException('Failed to create checkout', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  async giveSubscription(email: string, durationInMonths: number): Promise<ResponseModel> {
+    try {
+      const user = await this.prisma.user.findUnique({ where: { email } });
+      if (!user) {
+        return errorResponse('User not found');
+      }
+
+      const now = new Date();
+      const endDate = new Date(now.setMonth(now.getMonth() + durationInMonths));
+
+      const subscription = await this.prisma.subscription.upsert({
+        where: { userId: user.id },
+        update: {
+          status: 'active',
+          endDate,
+          subscriptionLengthInMonths: durationInMonths,
+          updatedAt: new Date(),
+        },
+        create: {
+          userId: user.id,
+          orderId: `COMP-${Date.now()}`, // Generate a unique order ID
+          status: 'active',
+          endDate,
+          productName: 'Complimentary Subscription',
+          variantName: `${durationInMonths} Month(s)`,
+          subscriptionLengthInMonths: durationInMonths,
+          totalAmount: 0,
+          currency: 'USD',
+        },
+      });
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { is_subscribed: 1 },
+      });
+
+      return successResponse('Subscription given successfully', { subscription });
+    } catch (error) {
+      console.error('Error giving subscription:', error);
+      return errorResponse('Failed to give subscription');
+    }
+  }
 }

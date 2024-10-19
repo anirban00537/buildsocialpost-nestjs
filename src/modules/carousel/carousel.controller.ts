@@ -47,7 +47,7 @@ export class CarouselController {
     return this.carouselService.getCarousel(id);
   }
 
-  @Get('generate-carousel-content')
+  @Post('generate-carousel-content')
   generateCarouselContent(
     @Body() dto: GenerateCarouselContentDto,
   ): Promise<ResponseModel> {
