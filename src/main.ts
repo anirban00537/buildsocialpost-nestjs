@@ -16,6 +16,7 @@ import { Reflector } from '@nestjs/core';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
+    rawBody: true,
   });
   const configService = app.get(ConfigService);
   setApp(app);
@@ -67,6 +68,10 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+
+  app.useBodyParser('json', { verify: (req: any, res, buf) => {
+    req.rawBody = buf;
+  }});
 
   await app.listen(configService.get('APP_PORT') || 3001);
 }

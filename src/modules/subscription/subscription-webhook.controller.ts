@@ -5,13 +5,13 @@ import {
   Headers,
   HttpException,
   HttpStatus,
+  RawBodyRequest,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { Public } from 'src/shared/decorators/public.decorator';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { SubscriptionService } from './subscription.service';
-import getRawBody from 'raw-body';
 
 @Controller('subscription/webhook')
 export class SubscriptionWebhookController {
@@ -23,7 +23,7 @@ export class SubscriptionWebhookController {
   @Public()
   @Post()
   async handleWebhook(
-    @Req() req: Request,
+    @Req() req: RawBodyRequest<Request>,
     @Headers('X-Event-Name') eventType: string,
     @Headers('X-Signature') signature: string,
   ) {
@@ -32,7 +32,11 @@ export class SubscriptionWebhookController {
       console.log('Event type:', eventType);
       console.log('Signature:', signature);
 
-      const rawBody = await getRawBody(req);
+      const rawBody = req.rawBody;
+      if (!rawBody) {
+        throw new HttpException('No raw body found', HttpStatus.BAD_REQUEST);
+      }
+
       const body = JSON.parse(rawBody.toString('utf8'));
       console.log('Request body:', JSON.stringify(body, null, 2));
 
