@@ -32,18 +32,16 @@ export class SubscriptionWebhookController {
       console.log('Event type:', eventType);
       console.log('Signature:', signature);
 
-      // if (!req.rawBody) {
-      //   throw new HttpException('No raw body found', HttpStatus.BAD_REQUEST);
-      // }
-
       const rawBody = req.rawBody;
-      console.log('Raw body:', rawBody);
+      if (!rawBody) {
+        throw new HttpException('No raw body found', HttpStatus.BAD_REQUEST);
+      }
+
       const body = JSON.parse(rawBody.toString('utf8'));
       console.log('Request body:', JSON.stringify(body, null, 2));
 
       // Verify signature
-      const secret =
-        this.configService.get<string>('LEMONSQUEEZY_WEBHOOK_SIGNATURE') || '';
+      const secret = this.configService.get<string>('LEMONSQUEEZY_WEBHOOK_SIGNATURE') || '';
       const hmac = crypto.createHmac('sha256', secret);
       const digest = hmac.update(rawBody).digest('hex');
 

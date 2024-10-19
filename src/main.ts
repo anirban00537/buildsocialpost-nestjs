@@ -16,9 +16,7 @@ import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    bufferLogs: true,
     rawBody: true,
-    bodyParser: false,
   });
   const configService = app.get(ConfigService);
   setApp(app);
@@ -91,6 +89,9 @@ async function bootstrap() {
       next();
     }
   });
+
+  // If you need to increase the body size limit
+  app.useBodyParser('json', { limit: '10mb' });
 
   await app.listen(configService.get('APP_PORT') || 3001);
 }
