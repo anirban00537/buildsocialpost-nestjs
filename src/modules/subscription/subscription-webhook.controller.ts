@@ -68,7 +68,7 @@ export class SubscriptionWebhookController {
     endDate.setMonth(endDate.getMonth() + subscriptionLengthInMonths);
 
     const subscriptionData = {
-      userId,
+      userId: Number(userId),
       orderId: evt.data.id,
       status: isSuccessful ? 'active' : 'pending',
       endDate: endDate,
