@@ -15,9 +15,7 @@ import { Reflector } from '@nestjs/core';
 import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    rawBody: true,
-  });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
   const configService = app.get(ConfigService);
   setApp(app);
   app.setGlobalPrefix(API_PREFIX);
@@ -37,12 +35,6 @@ async function bootstrap() {
     '..',
     coreConstant.FILE_DESTINATION,
   );
-  console.log('Full static assets path:', staticAssetsPath);
-  console.log(
-    'Static assets serve prefix:',
-    `/${coreConstant.FILE_DESTINATION}/`,
-  );
-
   app.useStaticAssets(staticAssetsPath, {
     prefix: `/${coreConstant.FILE_DESTINATION}/`,
   });
@@ -54,44 +46,29 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
-  console.log(
-    'Static assets directory:',
-    path.join(__dirname, `../../${coreConstant.FILE_DESTINATION}`),
-  );
-  console.log('Serving at:', `/${coreConstant.FILE_DESTINATION}`);
 
-  // Use MyLogger
   const logger = app.get(MyLogger);
   app.useLogger(logger);
 
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
-  const rawBodyBuffer = (req, res, buf, encoding) => {
-    if (buf && buf.length) {
-      req.rawBody = buf.toString(encoding || 'utf8');
+  // Only add the rawbody string if this is a webhook request.
+  const rawBodyBuffer = (req, res, buffer, encoding) => {
+    if (!req.headers['x-signature']) {
+      return;
+    }
+
+    if (buffer && buffer.length) {
+      req.rawBody = buffer.toString(encoding || 'utf8');
     }
   };
 
   app.use(bodyParser.urlencoded({ verify: rawBodyBuffer, extended: true }));
   app.use(bodyParser.json({ verify: rawBodyBuffer }));
 
-  // Raw body parser for the webhook route
-  app.use('/subscription/webhook', express.raw({ type: 'application/json' }));
-
-  // JSON parser for all other routes
-  app.use((req, res, next) => {
-    if (req.originalUrl !== '/subscription/webhook') {
-      express.json()(req, res, next);
-    } else {
-      next();
-    }
-  });
-
   // If you need to increase the body size limit
-  app.useBodyParser('json', { limit: '10mb' });
+  app.use(bodyParser.json({ limit: '10mb' }));
+  app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 
   await app.listen(configService.get('APP_PORT') || 3001);
 }
