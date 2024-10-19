@@ -26,6 +26,10 @@ export class SubscriptionWebhookController {
     @Headers('X-Event-Name') eventType: string,
     @Headers('X-Signature') signature: string,
   ) {
+    console.log('Webhook endpoint hit');
+    console.log('Request headers:', req.headers);
+    console.log('Request body:', req.body);
+
     try {
       const rawBody = await this.getRawBody(req);
       console.log('rawBody', rawBody);
