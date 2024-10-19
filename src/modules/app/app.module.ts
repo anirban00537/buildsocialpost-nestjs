@@ -16,6 +16,7 @@ import { CarouselModule } from '../carousel/carousel.module';
 import { LoggerModule } from '../logger/logger.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { FileModule } from '../file/file.module';
+import { RawBodyMiddleware } from 'src/middleware/raw-body.middleware';
 
 @Module({
   imports: [
@@ -49,5 +50,9 @@ export class AppModule implements NestModule {
         method: RequestMethod.ALL,
       })
       .forRoutes({ path: '*', method: RequestMethod.ALL });
+
+    consumer
+      .apply(RawBodyMiddleware)
+      .forRoutes('subscription/webhook');
   }
 }

@@ -5,7 +5,6 @@ import {
   Headers,
   HttpException,
   HttpStatus,
-  RawBodyRequest,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { Public } from 'src/shared/decorators/public.decorator';
@@ -23,7 +22,7 @@ export class SubscriptionWebhookController {
   @Public()
   @Post()
   async handleWebhook(
-    @Req() req: RawBodyRequest<Request>,
+    @Req() req: Request & { rawBody?: Buffer },
     @Headers('X-Event-Name') eventType: string,
     @Headers('X-Signature') signature: string,
   ) {
@@ -32,11 +31,11 @@ export class SubscriptionWebhookController {
       console.log('Event type:', eventType);
       console.log('Signature:', signature);
 
-      const rawBody = req.rawBody;
-      if (!rawBody) {
+      if (!req.rawBody) {
         throw new HttpException('No raw body found', HttpStatus.BAD_REQUEST);
       }
 
+      const rawBody = req.rawBody;
       const body = JSON.parse(rawBody.toString('utf8'));
       console.log('Request body:', JSON.stringify(body, null, 2));
 

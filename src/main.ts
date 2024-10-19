@@ -73,6 +73,15 @@ async function bootstrap() {
     req.rawBody = buf;
   }});
 
+  // Apply JSON parsing to all routes except the webhook route
+  app.use((req, res, next) => {
+    if (req.originalUrl === '/subscription/webhook') {
+      next();
+    } else {
+      express.json()(req, res, next);
+    }
+  });
+
   await app.listen(configService.get('APP_PORT') || 3001);
 }
 bootstrap();
