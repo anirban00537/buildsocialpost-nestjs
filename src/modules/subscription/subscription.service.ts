@@ -94,20 +94,25 @@ export class SubscriptionService {
     totalAmount: number;
     currency: string;
   }): Promise<void> {
-    await this.prisma.subscription.create({
-      data: {
-        userId: subscriptionData.userId,
-        orderId: subscriptionData.orderId,
-        status: subscriptionData.status,
-        endDate: subscriptionData.endDate,
-        createdAt: subscriptionData.createdAt,
-        productName: subscriptionData.productName,
-        variantName: subscriptionData.variantName,
-        subscriptionLengthInMonths: subscriptionData.subscriptionLengthInMonths,
-        totalAmount: subscriptionData.totalAmount,
-        currency: subscriptionData.currency,
-      },
-    });
+    console.log('Creating subscription with data:', subscriptionData);
+
+    try {
+      const result = await this.prisma.subscription.create({
+        data: subscriptionData,
+      });
+      console.log('Subscription created successfully:', result);
+
+      // Update user's subscription status
+      await this.prisma.user.update({
+        where: { id: subscriptionData.userId },
+        data: { is_subscribed: 1 },
+      });
+      console.log('User subscription status updated');
+
+    } catch (error) {
+      console.error('Error creating subscription:', error);
+      throw error;
+    }
   }
 
   async createCheckout(
