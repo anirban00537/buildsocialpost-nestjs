@@ -10,7 +10,7 @@ import { coreConstant } from '../helpers/coreConstant';
 export const validImageUploadTypesRegex = /jpeg|jpg|png/;
 
 /** Constant that sets the maximum image upload file size */
-export const maxImageUploadSize = 10 * 1024 * 1024; // 10MB
+export const maxImageUploadSize = 3 * 1024 * 1024; // 10MB
 
 // Create the upload directory if it doesn't exist
 const uploadDirectory = path.resolve(process.cwd(), coreConstant.FILE_DESTINATION);
