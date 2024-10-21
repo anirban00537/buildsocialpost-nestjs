@@ -11,16 +11,31 @@ import {
 import { GetFileDto } from './dto/get-file.dto';
 import { plainToClass } from 'class-transformer';
 import * as fs from 'fs/promises';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { coreConstant } from 'src/shared/helpers/coreConstant';
 
 @Injectable()
 export class FileService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subscriptionService: SubscriptionService,
+  ) {}
 
   async uploadImage(
     file: Express.Multer.File,
     user: User,
   ): Promise<ResponseModel> {
     try {
+      const isSubscribed = await this.subscriptionService.isSubscribed(user);
+      if (!isSubscribed) {
+        return errorResponse(
+          'User is not subscribed, please subscribe to upload images',
+        );
+      }
+      const imageUsage: any = await this.getImageUsage(user.id);
+      if (imageUsage.data.totalSize >= coreConstant.MAX_IMAGE_SIZE) {
+        return errorResponse('User has reached the limit of 500MB');
+      }
       const url = await uploadFile(file, user.id);
       if (!url) {
         return errorResponse('File upload failed');
@@ -56,7 +71,7 @@ export class FileService {
         this.prisma,
         'file',
         { userId: user.id },
-        options,
+        { ...options, orderBy: { createdAt: 'desc' } },
       );
 
       if (result.items.length === 0) {
@@ -144,7 +159,6 @@ export class FileService {
         totalCount,
         totalSize: totalSize._sum.size || 0,
       };
-      console.log(usage, 'usage');
       if (totalCount === 0) {
         return successResponse('No images found for this user', usage);
       }

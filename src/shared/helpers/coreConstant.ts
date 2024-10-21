@@ -9,4 +9,7 @@ export const coreConstant = {
   IS_NOT_VERIFIED: 0,
   VERIFICATION_TYPE_EMAIL: 1,
   FILE_DESTINATION: 'public/uploads',
+  SUBSCRIPTION_STATUS_ACTIVE: 'active',
+  SUBSCRIPTION_STATUS_EXPIRED: 'expired',
+  MAX_IMAGE_SIZE: 500 * 1024 * 1024, // 500MB
 };

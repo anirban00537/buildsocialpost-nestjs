@@ -6,7 +6,7 @@ import { ResponseModel } from 'src/shared/models/response.model';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { lastValueFrom } from 'rxjs';
-import { paginatedQuery } from 'src/shared/utils/pagination.util';
+import { coreConstant } from 'src/shared/helpers/coreConstant';
 
 @Injectable()
 export class SubscriptionService {
@@ -45,6 +45,10 @@ export class SubscriptionService {
       );
       result = { isSubscribed: true, subscription, daysLeft };
     } else {
+      await this.prisma.subscription.update({
+        where: { id: subscription.id },
+        data: { status: coreConstant.SUBSCRIPTION_STATUS_EXPIRED },
+      });
       result = { isSubscribed: false, subscription, daysLeft: 0 };
     }
 
@@ -54,11 +58,35 @@ export class SubscriptionService {
     );
   }
 
+  async isSubscribed(user: User): Promise<boolean> {
+    try {
+      const subscription = await this.prisma.subscription.findFirst({
+        where: {
+          userId: user.id,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+      if (!subscription) {
+        return false;
+      }
+      const now = new Date();
+      const endDate = new Date(subscription.endDate);
+      const isActive =
+        subscription.status === coreConstant.SUBSCRIPTION_STATUS_ACTIVE &&
+        endDate > now;
+      return isActive;
+    } catch (error) {
+      return false;
+    }
+  }
+
   async getActiveSubscribers(): Promise<number> {
     const now = new Date();
     const activeSubscribers = await this.prisma.subscription.count({
       where: {
-        status: 'active',
+        status: coreConstant.SUBSCRIPTION_STATUS_ACTIVE,
         endDate: {
           gt: now,
         },
@@ -71,13 +99,13 @@ export class SubscriptionService {
     const now = new Date();
     await this.prisma.subscription.updateMany({
       where: {
-        status: 'active',
+        status: coreConstant.SUBSCRIPTION_STATUS_ACTIVE,
         endDate: {
           lte: now,
         },
       },
       data: {
-        status: 'expired',
+        status: coreConstant.SUBSCRIPTION_STATUS_EXPIRED,
       },
     });
   }
@@ -108,7 +136,6 @@ export class SubscriptionService {
         data: { is_subscribed: 1 },
       });
       console.log('User subscription status updated');
-
     } catch (error) {
       console.error('Error creating subscription:', error);
       throw error;
@@ -200,7 +227,7 @@ export class SubscriptionService {
       const subscription = await this.prisma.subscription.upsert({
         where: { userId: user.id },
         update: {
-          status: 'active',
+          status: coreConstant.SUBSCRIPTION_STATUS_ACTIVE,
           endDate,
           subscriptionLengthInMonths: durationInMonths,
           updatedAt: new Date(),
@@ -208,7 +235,7 @@ export class SubscriptionService {
         create: {
           userId: user.id,
           orderId: `COMP-${Date.now()}`, // Generate a unique order ID
-          status: 'active',
+          status: coreConstant.SUBSCRIPTION_STATUS_ACTIVE,
           endDate,
           productName: 'Complimentary Subscription',
           variantName: `${durationInMonths} Month(s)`,
