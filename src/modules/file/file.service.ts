@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { uploadFile } from '../../shared/configs/multer-upload.config';
+import { uploadFile, deleteFileFromS3 } from '../../shared/configs/multer-upload.config';
 import { User } from '../users/entities/user.entity';
 import { ResponseModel } from 'src/shared/models/response.model';
 import { errorResponse, successResponse } from 'src/shared/helpers/functions';
@@ -13,13 +13,24 @@ import { plainToClass } from 'class-transformer';
 import * as fs from 'fs/promises';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { coreConstant } from 'src/shared/helpers/coreConstant';
+import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 @Injectable()
 export class FileService {
+  private s3Client: S3Client;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptionService: SubscriptionService,
-  ) {}
+  ) {
+    this.s3Client = new S3Client({
+      region: process.env.AWS_REGION,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      },
+    });
+  }
 
   async uploadImage(
     file: Express.Multer.File,
@@ -32,33 +43,49 @@ export class FileService {
           'User is not subscribed, please subscribe to upload images',
         );
       }
+
       const imageUsage: any = await this.getImageUsage(user.id);
       if (imageUsage.data.totalSize >= coreConstant.MAX_IMAGE_SIZE) {
         return errorResponse('User has reached the limit of 500MB');
       }
+
+      console.log('Attempting to upload file:', file.originalname);
       const url = await uploadFile(file, user.id);
       if (!url) {
-        return errorResponse('File upload failed');
+        console.error('uploadFile function returned null');
+        return errorResponse('File upload to S3 failed');
       }
 
+      console.log('File uploaded successfully to S3. URL:', url);
+
+      // Extract the path from the S3 URL
+      const path = new URL(url).pathname;
+
+      console.log('Creating file record in database');
       const newFile = await this.prisma.file.create({
         data: {
-          name: file.filename,
+          name: file.originalname,
           originalName: file.originalname,
           mimeType: file.mimetype,
           size: file.size,
-          path: file.path,
           url: url,
-          userId: user.id,
+          path: path,
+          user: { connect: { id: user.id } },
         },
       });
+
+      console.log('File record created successfully:', newFile.id);
 
       const fileResponse = plainToClass(GetFileDto, newFile, {
         excludeExtraneousValues: true,
       });
       return successResponse('File uploaded successfully', fileResponse);
     } catch (error) {
-      return errorResponse('File upload failed');
+      console.error('Detailed upload error:', error);
+      if (error instanceof Error) {
+        return errorResponse(`File upload failed: ${error.message}`);
+      }
+      return errorResponse('File upload failed due to an unknown error');
     }
   }
 
@@ -117,13 +144,8 @@ export class FileService {
         return errorResponse('File not found');
       }
 
-      // Delete the file from storage
-      try {
-        await fs.unlink(file.path);
-      } catch (unlinkError) {
-        console.error('Error deleting file from storage:', unlinkError);
-        // Continue with database deletion even if file removal fails
-      }
+      // Delete the file from S3
+      await deleteFileFromS3(file.url);
 
       // Delete the file record from the database
       const deletedFile = await this.prisma.file.delete({
@@ -136,6 +158,10 @@ export class FileService {
       return successResponse('File deleted successfully', fileResponse);
     } catch (error) {
       console.error('Error deleting file:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
       return errorResponse('Error deleting file');
     }
   }

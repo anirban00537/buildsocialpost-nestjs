@@ -3,6 +3,9 @@ import { diskStorage } from 'multer';
 import path from 'path';
 import fs from 'fs'; // Import the 'fs' module for file system operations
 import { coreConstant } from '../helpers/coreConstant';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { v4 as uuidv4 } from 'uuid';
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /** Constant containing a Regular Expression
  * with the valid image upload types
@@ -16,21 +19,19 @@ export const maxImageUploadSize = 7 * 1024 * 1024; // 7MB
 const uploadDirectory = path.resolve(process.cwd(), coreConstant.FILE_DESTINATION);
 fs.mkdirSync(uploadDirectory, { recursive: true });
 
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+
 /** Configurations for the multer library used for file upload.
  *
  * Accepts types jpeg, jpg, and png of size up to 3MB
  */
 export const multerUploadConfig: MulterOptions = {
-  storage: diskStorage({
-    destination: uploadDirectory, // Use the 'uploads' directory
-    filename: (request, file, callback) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      const fileExtension = path.extname(file.originalname).toLowerCase();
-      const fileName = `${uniqueSuffix}${fileExtension}`;
-      return callback(null, fileName);
-    },
-  }),
-
   fileFilter: (request, file, callback) => {
     const mimetype = validImageUploadTypesRegex.test(file.mimetype);
     const extname = validImageUploadTypesRegex.test(
@@ -52,18 +53,71 @@ export const uploadFile = async (
   file: Express.Multer.File,
   userId: number,
 ): Promise<string | null> => {
-  console.log('Received file in uploadFile:', file);
-  if (!file || !file.path) {
-    console.warn('No file or file path provided for upload');
+  if (!file || !file.buffer) {
+    console.warn('No file or file buffer provided for upload');
     return null;
   }
 
-  const relativePath = path.relative(uploadDirectory, file.path);
-  const url = `/${coreConstant.FILE_DESTINATION}/${relativePath.replace(
-    /\\/g,
-    '/',
-  )}`;
-  console.log('File URL:', url);
+  const fileExtension = file.originalname.split('.').pop();
+  const key = `${userId}/${uuidv4()}.${fileExtension}`;
 
-  return url;
+  try {
+    console.log('Attempting to upload to S3:', key);
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: process.env.AWS_S3_BUCKET_NAME,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      })
+    );
+
+    // Generate a presigned URL for the uploaded object
+    const command = new GetObjectCommand({
+      Bucket: process.env.AWS_S3_BUCKET_NAME,
+      Key: key,
+    });
+    
+    const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); // URL expires in 1 hour
+
+    console.log('File uploaded successfully to S3. Presigned URL:', url);
+    return url;
+  } catch (error) {
+    console.error('Detailed S3 upload error:', error);
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    // Log AWS-specific error details if available
+    if ('name' in error && 'code' in error && '$metadata' in error) {
+      console.error('AWS Error Name:', error.name);
+      console.error('AWS Error Code:', error.code);
+      console.error('AWS Error Metadata:', error.$metadata);
+    }
+    return null;
+  }
+};
+
+export const deleteFileFromS3 = async (url: string): Promise<void> => {
+  try {
+    const key = new URL(url).pathname.slice(1); // Remove leading '/'
+    console.log('Attempting to delete file from S3:', key);
+
+    await s3Client.send(
+      new DeleteObjectCommand({
+        Bucket: process.env.AWS_S3_BUCKET_NAME,
+        Key: key,
+      })
+    );
+
+    console.log('File successfully deleted from S3');
+  } catch (error) {
+    console.error('Error deleting file from S3:', error);
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    // We're not throwing the error here to allow the process to continue
+  }
 };

@@ -4,16 +4,18 @@ import { CreateUpdateBrandingDto } from './dto/create-update-branding.dto';
 import { UserBranding } from '@prisma/client';
 import { ResponseModel } from 'src/shared/models/response.model';
 import { errorResponse, successResponse } from 'src/shared/helpers/functions';
-import { uploadFile } from 'src/shared/configs/multer-upload.config';
+import {
+  uploadFile,
+  deleteFileFromS3,
+} from 'src/shared/configs/multer-upload.config';
 import { plainToClass } from 'class-transformer';
 import { BrandingResponseDto } from './dto/branding-response.dto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { coreConstant } from '../../shared/helpers/coreConstant';
 
 @Injectable()
 export class BrandingService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async createUpdateBranding(
     userId: number,
@@ -31,7 +33,7 @@ export class BrandingService {
       if (headshot) {
         // Delete existing headshot if it exists
         if (existingBranding && existingBranding.headshot) {
-          await this.deleteExistingHeadshot(existingBranding.headshot);
+          await deleteFileFromS3(existingBranding.headshot);
         }
 
         headshotUrl = await uploadFile(headshot, userId);

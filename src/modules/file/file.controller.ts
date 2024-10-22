@@ -15,6 +15,7 @@ import { multerUploadConfig } from '../../shared/configs/multer-upload.config';
 import { UserInfo } from 'src/shared/decorators/user.decorators';
 import { User } from '../users/entities/user.entity';
 import { ResponseModel } from 'src/shared/models/response.model';
+import { memoryStorage } from 'multer';
 
 @Controller('files')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -22,7 +23,10 @@ export class FileController {
   constructor(private readonly fileService: FileService) {}
 
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file', multerUploadConfig))
+  @UseInterceptors(FileInterceptor('file', {
+    storage: memoryStorage(),
+    ...multerUploadConfig
+  }))
   async uploadFile(
     @UploadedFile() file: Express.Multer.File,
     @UserInfo() user: User,
