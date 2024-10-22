@@ -1,8 +1,8 @@
 {
-  "name": "tradexpro-admin",
+  "name": "Buildsocialpost-nestjs",
   "private": true,
   "version": "1.0.0",
-  "description": "Tradexpro Admin backend with nodejs",
+  "description": "Buildsocialpost Admin backend with nodejs",
   "license": "MIT",
   "scripts": {
     "prebuild": "rimraf dist",

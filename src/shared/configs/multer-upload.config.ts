@@ -3,9 +3,12 @@ import { diskStorage } from 'multer';
 import path from 'path';
 import fs from 'fs'; // Import the 'fs' module for file system operations
 import { coreConstant } from '../helpers/coreConstant';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /** Constant containing a Regular Expression
  * with the valid image upload types
@@ -16,7 +19,10 @@ export const validImageUploadTypesRegex = /jpeg|jpg|png/;
 export const maxImageUploadSize = 7 * 1024 * 1024; // 7MB
 
 // Create the upload directory if it doesn't exist
-const uploadDirectory = path.resolve(process.cwd(), coreConstant.FILE_DESTINATION);
+const uploadDirectory = path.resolve(
+  process.cwd(),
+  coreConstant.FILE_DESTINATION,
+);
 fs.mkdirSync(uploadDirectory, { recursive: true });
 
 const s3Client = new S3Client({
@@ -73,15 +79,10 @@ export const uploadFile = async (
       })
     );
 
-    // Generate a presigned URL for the uploaded object
-    const command = new GetObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME,
-      Key: key,
-    });
-    
-    const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); // URL expires in 1 hour
+    // Generate a non-expiring URL for the uploaded object
+    const url = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 
-    console.log('File uploaded successfully to S3. Presigned URL:', url);
+    console.log('File uploaded successfully to S3. URL:', url);
     return url;
   } catch (error) {
     console.error('Detailed S3 upload error:', error);
@@ -108,7 +109,7 @@ export const deleteFileFromS3 = async (url: string): Promise<void> => {
       new DeleteObjectCommand({
         Bucket: process.env.AWS_S3_BUCKET_NAME,
         Key: key,
-      })
+      }),
     );
 
     console.log('File successfully deleted from S3');

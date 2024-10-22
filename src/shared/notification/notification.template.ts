@@ -32,8 +32,7 @@ export class NotificationTemplate {
 
     variables.settings = settingObj;
 
-    variables.settings.logo =
-      'https://tradexpro-laravel.cdibrandstudio.com/assets/user/images/logo.svg';
+    variables.settings.logo = 'https://Buildsocialpost.com/logo.svg';
     variables.anti_phishing_code = 1;
     variables.exchange_app_url = exchange_app_url();
     variables.app_url = base_url();
