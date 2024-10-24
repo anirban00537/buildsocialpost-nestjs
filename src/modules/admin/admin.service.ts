@@ -1,42 +1,102 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { successResponse } from 'src/shared/helpers/functions';
+import {
+  errorResponse,
+  processException,
+  successResponse,
+} from 'src/shared/helpers/functions';
+import { ResponseModel } from 'src/shared/models/response.model';
+import {
+  paginatedQuery,
+  PaginationOptions,
+} from 'src/shared/utils/pagination.util';
 
 @Injectable()
 export class AdminService {
   constructor(private prisma: PrismaService) {}
 
-  async getDashboardData() {
-    const [
-      totalCarousels,
-      activeSubscriptions,
-      totalUsers,
-      verifiedUsers,
-      recentCarousels,
-      carouselCreationOverview,
-      userSubscriptions,
-      userDetails
-    ] = await Promise.all([
-      this.getTotalCarousels(),
-      this.getActiveSubscriptions(),
-      this.getTotalUsers(),
-      this.getVerifiedUsers(),
-      this.getRecentCarousels(),
-      this.getCarouselCreationOverview(),
-      this.getUserSubscriptions(),
-      this.getUserDetails(),
-    ]);
+  async getDashboardData(): Promise<ResponseModel> {
+    try {
+      const [
+        totalCarousels,
+        activeSubscriptions,
+        totalUsers,
+        verifiedUsers,
+        recentCarousels,
+        carouselCreationOverview,
+        userSubscriptions,
+        userDetails,
+      ] = await Promise.all([
+        this.getTotalCarousels(),
+        this.getActiveSubscriptions(),
+        this.getTotalUsers(),
+        this.getVerifiedUsers(),
+        this.getRecentCarousels(),
+        this.getCarouselCreationOverview(),
+        this.getUserSubscriptions(),
+        this.getUserDetails(),
+      ]);
 
-    return successResponse('Retrieved dashboard data', {
-      totalCarousels,
-      activeSubscriptions,
-      totalUsers,
-      verifiedUsers,
-      recentCarousels,
-      carouselCreationOverview,
-      userSubscriptions,
-      userDetails,
-    });
+      return successResponse('Retrieved dashboard data', {
+        totalCarousels,
+        activeSubscriptions,
+        totalUsers,
+        verifiedUsers,
+        recentCarousels,
+        carouselCreationOverview,
+        userSubscriptions,
+        userDetails,
+      });
+    } catch (error) {
+      return errorResponse(error.message);
+    }
+  }
+
+  async getCarousels(options: PaginationOptions): Promise<ResponseModel> {
+    try {
+      const carousels = await paginatedQuery(
+        this.prisma,
+        'carousel',
+        {},
+        options,
+        {
+          user: { // Directly specify the relation here
+            select: {
+              id: true,
+              email: true,
+              first_name: true,
+              last_name: true,
+            },
+          },
+        }
+      );
+      return successResponse('Retrieved carousels', carousels);
+    } catch (error) {
+      return errorResponse(error.message);
+    }
+  }
+
+  async getUsers(options: PaginationOptions): Promise<ResponseModel> {
+    try {
+      const users = await paginatedQuery(this.prisma, 'user', {}, options);
+      return successResponse('Retrieved users', users);
+    } catch (error) {
+      processException(error);
+    }
+  }
+
+  async getSubscriptions(options: PaginationOptions): Promise<ResponseModel> {
+    try {
+      const subscriptions = await paginatedQuery(
+        this.prisma,
+        'subscription',
+        {},
+        options,
+      );
+      return successResponse('Retrieved subscriptions', subscriptions);
+    } catch (error) {
+      processException(error);
+    }
   }
 
   private async getTotalCarousels(): Promise<number> {
@@ -70,7 +130,7 @@ export class AdminService {
     return this.prisma.carousel.findMany({
       take: limit,
       orderBy: {
-        createdAt: 'desc'
+        createdAt: 'desc',
       },
       include: {
         user: {
@@ -78,19 +138,32 @@ export class AdminService {
             id: true,
             email: true,
             first_name: true,
-            last_name: true
-          }
-        }
-      }
+            last_name: true,
+          },
+        },
+      },
     });
   }
 
   private async getCarouselCreationOverview() {
     const currentYear = new Date().getFullYear();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
     const carouselCounts = await Promise.all(
-      months.map((_, index) => 
+      months.map((_, index) =>
         this.prisma.carousel.count({
           where: {
             createdAt: {
@@ -98,8 +171,8 @@ export class AdminService {
               lt: new Date(currentYear, index + 1, 1),
             },
           },
-        })
-      )
+        }),
+      ),
     );
 
     const overview = months.map((month, index) => ({
