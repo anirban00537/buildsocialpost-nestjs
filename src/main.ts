@@ -20,9 +20,10 @@ async function bootstrap() {
   setApp(app);
   app.setGlobalPrefix(API_PREFIX);
 
-  // Enable CORS for all origins
+  // Update CORS configuration
+  const corsOrigins = configService.get('CORS_ORIGIN').split(',');
   app.enableCors({
-    origin: '*', // This allows all origins
+    origin: corsOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
