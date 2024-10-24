@@ -17,6 +17,7 @@ import {
 } from 'src/shared/helpers/openai';
 import { GenerateCarouselContentDto } from './dto/generate-caorusel-content.dto';
 import { Carousel } from '@prisma/client';
+import { ApiUnsupportedMediaTypeResponse } from '@nestjs/swagger';
 
 @Injectable()
 export class CarouselService {
@@ -162,5 +163,21 @@ export class CarouselService {
     } catch (error) {
       return errorResponse('Error generating carousel content');
     }
+  }
+  async getAllCarousels(
+    options: PaginationOptions = {},
+  ): Promise<ResponseModel> {
+    try {
+      const result = await paginatedQuery(
+        this.prisma,
+        'carousel',
+        {},
+        { ...options, orderBy: { createdAt: 'desc' } },
+      );
+      if (!result.items.length) {
+        return errorResponse('No carousels found', result);
+      }
+      return successResponse('Here is your carousels', result);
+    } catch (error) {}
   }
 }
