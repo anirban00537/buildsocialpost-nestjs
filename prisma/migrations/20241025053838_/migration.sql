@@ -48,25 +48,44 @@ CREATE TABLE "LinkedInProfile" (
 );
 
 -- CreateTable
-CREATE TABLE "Post" (
+CREATE TABLE "LinkedInPost" (
     "id" SERIAL NOT NULL,
     "content" TEXT NOT NULL,
     "scheduledTime" TIMESTAMP(3) NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'scheduled',
+    "visibility" TEXT NOT NULL DEFAULT 'public',
+    "postType" TEXT NOT NULL DEFAULT 'text',
+    "imageUrls" TEXT[],
+    "videoUrl" TEXT,
+    "documentUrl" TEXT,
+    "pollOptions" JSONB,
+    "pollDurationHours" INTEGER,
+    "hashtags" TEXT[],
+    "mentions" TEXT[],
+    "linkUrl" TEXT,
+    "linkTitle" TEXT,
+    "linkDescription" TEXT,
+    "linkThumbnail" TEXT,
+    "isAIGenerated" BOOLEAN NOT NULL DEFAULT false,
+    "aiPrompt" TEXT,
+    "creditCost" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "userId" INTEGER NOT NULL,
     "workspaceId" INTEGER,
     "linkedInProfileId" INTEGER NOT NULL,
-    "aiGeneratedPostId" INTEGER,
+    "likes" INTEGER NOT NULL DEFAULT 0,
+    "comments" INTEGER NOT NULL DEFAULT 0,
+    "shares" INTEGER NOT NULL DEFAULT 0,
+    "impressions" INTEGER NOT NULL DEFAULT 0,
 
-    CONSTRAINT "Post_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "LinkedInPost_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "PostLog" (
     "id" SERIAL NOT NULL,
-    "postId" INTEGER NOT NULL,
+    "linkedInPostId" INTEGER NOT NULL,
     "status" TEXT NOT NULL,
     "message" TEXT,
     "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -164,27 +183,14 @@ CREATE TABLE "UserVerificationCodes" (
 );
 
 -- CreateTable
-CREATE TABLE "AIGeneratedPost" (
-    "id" SERIAL NOT NULL,
-    "userId" INTEGER NOT NULL,
-    "workspaceId" INTEGER,
-    "prompt" TEXT NOT NULL,
-    "content" TEXT NOT NULL,
-    "creditCost" INTEGER NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "AIGeneratedPost_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "CreditTransaction" (
     "id" SERIAL NOT NULL,
     "userId" INTEGER NOT NULL,
+    "postId" INTEGER,
     "amount" INTEGER NOT NULL,
     "description" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "aIGeneratedPostId" INTEGER,
+    "linkedInPostId" INTEGER,
 
     CONSTRAINT "CreditTransaction_pkey" PRIMARY KEY ("id")
 );
@@ -217,19 +223,16 @@ CREATE UNIQUE INDEX "LinkedInProfile_profileId_key" ON "LinkedInProfile"("profil
 CREATE INDEX "LinkedInProfile_userId_idx" ON "LinkedInProfile"("userId");
 
 -- CreateIndex
-CREATE INDEX "Post_userId_idx" ON "Post"("userId");
+CREATE INDEX "LinkedInPost_userId_idx" ON "LinkedInPost"("userId");
 
 -- CreateIndex
-CREATE INDEX "Post_workspaceId_idx" ON "Post"("workspaceId");
+CREATE INDEX "LinkedInPost_workspaceId_idx" ON "LinkedInPost"("workspaceId");
 
 -- CreateIndex
-CREATE INDEX "Post_linkedInProfileId_idx" ON "Post"("linkedInProfileId");
+CREATE INDEX "LinkedInPost_linkedInProfileId_idx" ON "LinkedInPost"("linkedInProfileId");
 
 -- CreateIndex
-CREATE INDEX "Post_aiGeneratedPostId_idx" ON "Post"("aiGeneratedPostId");
-
--- CreateIndex
-CREATE INDEX "PostLog_postId_idx" ON "PostLog"("postId");
+CREATE INDEX "PostLog_linkedInPostId_idx" ON "PostLog"("linkedInPostId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "UserTokens_family_key" ON "UserTokens"("family");
@@ -268,13 +271,13 @@ CREATE UNIQUE INDEX "UserVerificationCodes_code_key" ON "UserVerificationCodes"(
 CREATE INDEX "UserVerificationCodes_user_id_idx" ON "UserVerificationCodes"("user_id");
 
 -- CreateIndex
-CREATE INDEX "AIGeneratedPost_userId_idx" ON "AIGeneratedPost"("userId");
-
--- CreateIndex
-CREATE INDEX "AIGeneratedPost_workspaceId_idx" ON "AIGeneratedPost"("workspaceId");
-
--- CreateIndex
 CREATE INDEX "CreditTransaction_userId_idx" ON "CreditTransaction"("userId");
+
+-- CreateIndex
+CREATE INDEX "CreditTransaction_postId_idx" ON "CreditTransaction"("postId");
+
+-- CreateIndex
+CREATE INDEX "CreditTransaction_linkedInPostId_idx" ON "CreditTransaction"("linkedInPostId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "_UserWorkspaces_AB_unique" ON "_UserWorkspaces"("A", "B");

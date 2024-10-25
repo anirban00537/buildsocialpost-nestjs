@@ -38,10 +38,9 @@ model User {
   Subscription          Subscription?
   UserBranding          UserBranding?
   Files                 File[]
-  creditBalance         Int                     @default(0)
-  creditTransactions    CreditTransaction[]
+  AIWordUsage           AIWordUsage?
 
-  @@index([id]) // Add this if it's frequently used in relations
+  @@index([id])
 }
 
 model Workspace {
@@ -53,7 +52,7 @@ model Workspace {
   carousels     Carousel[]
   linkedInPosts LinkedInPost[]
 
-  @@index([id]) // Add this if it's frequently used in relations
+  @@index([id])
 }
 
 model LinkedInProfile {
@@ -70,40 +69,27 @@ model LinkedInProfile {
 }
 
 model LinkedInPost {
-  id                 Int                 @id @default(autoincrement())
-  content            String              @db.Text
-  scheduledTime      DateTime
-  status             String              @default("scheduled")
-  visibility         String              @default("public") // public, connections, or group
-  postType           String              @default("text") // text, image, video, document, poll
-  imageUrls          String[] // Array of image URLs
-  videoUrl           String? // URL for video content
-  documentUrl        String? // URL for document content
-  pollOptions        Json? // JSON object for poll options
-  pollDurationHours  Int? // Duration of the poll in hours
-  hashtags           String[] // Array of hashtags
-  mentions           String[] // Array of mentioned user IDs or handles
-  linkUrl            String? // URL for any external link shared
-  linkTitle          String? // Title of the shared link
-  linkDescription    String? // Description of the shared link
-  linkThumbnail      String? // Thumbnail image URL for the shared link
-  isAIGenerated      Boolean             @default(false)
-  aiPrompt           String?
-  creditCost         Int?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  userId             Int
-  workspaceId        Int?
-  linkedInProfileId  Int
-  user               User                @relation(fields: [userId], references: [id])
-  workspace          Workspace?          @relation(fields: [workspaceId], references: [id])
-  linkedInProfile    LinkedInProfile     @relation(fields: [linkedInProfileId], references: [id])
-  PostLog            PostLog[]
-  creditTransactions CreditTransaction[]
-  likes              Int                 @default(0)
-  comments           Int                 @default(0)
-  shares             Int                 @default(0)
-  impressions        Int                 @default(0)
+  id                Int             @id @default(autoincrement())
+  content           String          @db.Text
+  visibility        String          @default("public")
+  postType          String          @default("text")
+  imageUrls         String[]        @default([])
+  videoUrl          String?
+  documentUrl       String?
+  hashtags          String[]        @default([])
+  scheduledTime     DateTime
+  status            Int             @default(0) // 0: draft, 1: scheduled, 2: posted
+  isAIGenerated     Boolean         @default(false)
+  aiPrompt          String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  userId            Int
+  workspaceId       Int?
+  linkedInProfileId Int
+  user              User            @relation(fields: [userId], references: [id])
+  workspace         Workspace?      @relation(fields: [workspaceId], references: [id])
+  linkedInProfile   LinkedInProfile @relation(fields: [linkedInProfileId], references: [id])
+  postLogs          PostLog[]
 
   @@index([userId])
   @@index([workspaceId])
@@ -221,18 +207,16 @@ model UserWorkspaces {
   @@map("_UserWorkspaces")
 }
 
-model CreditTransaction {
-  id             Int           @id @default(autoincrement())
-  userId         Int
-  postId         Int?
-  amount         Int
-  description    String
-  createdAt      DateTime      @default(now())
-  user           User          @relation(fields: [userId], references: [id])
-  linkedInPost   LinkedInPost? @relation(fields: [linkedInPostId], references: [id])
-  linkedInPostId Int?
+model AIWordUsage {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique
+  totalWordLimit Int      @default(0)
+  wordsGenerated Int      @default(0)
+  lastResetDate  DateTime @default(now())
+  expirationTime DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
-  @@index([postId])
-  @@index([linkedInPostId])
 }
