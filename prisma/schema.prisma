@@ -56,40 +56,56 @@ model Workspace {
 }
 
 model LinkedInProfile {
-  id            Int            @id @default(autoincrement())
-  userId        Int
-  profileId     String         @unique
-  accessToken   String
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  user          User           @relation(fields: [userId], references: [id])
-  linkedInPosts LinkedInPost[]
+  id                   Int            @id @default(autoincrement())
+  userId               Int
+  profileId            String         @unique
+  accessToken          String
+  name                 String
+  email                String
+  avatarUrl            String?
+  clientId             String
+  creatorId            String
+  linkedInProfileUrl   String?
+  tokenExpiringAt      DateTime
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  user                 User           @relation(fields: [userId], references: [id])
+  linkedInPosts        LinkedInPost[]
+  workspaceId          String?
 
   @@index([userId])
+  @@index([workspaceId])
 }
 
 model LinkedInPost {
-  id                Int             @id @default(autoincrement())
-  content           String          @db.Text
-  visibility        String          @default("public")
-  postType          String          @default("text")
-  imageUrls         String[]        @default([])
-  videoUrl          String?
-  documentUrl       String?
-  hashtags          String[]        @default([])
-  scheduledTime     DateTime
-  status            Int             @default(0) // 0: draft, 1: scheduled, 2: posted
-  isAIGenerated     Boolean         @default(false)
-  aiPrompt          String?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  userId            Int
-  workspaceId       Int?
-  linkedInProfileId Int
-  user              User            @relation(fields: [userId], references: [id])
-  workspace         Workspace?      @relation(fields: [workspaceId], references: [id])
-  linkedInProfile   LinkedInProfile @relation(fields: [linkedInProfileId], references: [id])
-  postLogs          PostLog[]
+  id                  Int             @id @default(autoincrement())
+  content             String          @db.Text
+  visibility          String          @default("public")
+  postType            String          @default("text")
+  imageUrls           String[]        @default([])
+  videoUrl            String?
+  documentUrl         String?
+  hashtags            String[]        @default([])
+  scheduledTime       DateTime?
+  status              Int             @default(0) // 0: draft, 1: scheduled, 2: posted
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  publishedAt         DateTime?
+  publishedId         String?
+  linkedInApiResponse Json?
+  mentions            String[]        @default([])
+  fileUrl             String?
+  publishingError     String?
+  carouselTitle       String?
+  videoTitle          String?
+  publishingErrorCode String?
+  userId              Int
+  workspaceId         Int?
+  linkedInProfileId   Int
+  user                User            @relation(fields: [userId], references: [id])
+  workspace           Workspace?      @relation(fields: [workspaceId], references: [id])
+  linkedInProfile     LinkedInProfile @relation(fields: [linkedInProfileId], references: [id])
+  postLogs            PostLog[]
 
   @@index([userId])
   @@index([workspaceId])
