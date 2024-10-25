@@ -20,8 +20,58 @@ CREATE TABLE "User" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "login_provider" VARCHAR(50) NOT NULL,
+    "creditBalance" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Workspace" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Workspace_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "LinkedInProfile" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "profileId" TEXT NOT NULL,
+    "accessToken" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "LinkedInProfile_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Post" (
+    "id" SERIAL NOT NULL,
+    "content" TEXT NOT NULL,
+    "scheduledTime" TIMESTAMP(3) NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'scheduled',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "workspaceId" INTEGER,
+    "linkedInProfileId" INTEGER NOT NULL,
+    "aiGeneratedPostId" INTEGER,
+
+    CONSTRAINT "Post_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PostLog" (
+    "id" SERIAL NOT NULL,
+    "postId" INTEGER NOT NULL,
+    "status" TEXT NOT NULL,
+    "message" TEXT,
+    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PostLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -63,6 +113,7 @@ CREATE TABLE "Carousel" (
     "data" JSONB NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "workspaceId" INTEGER,
 
     CONSTRAINT "Carousel_pkey" PRIMARY KEY ("id")
 );
@@ -112,6 +163,38 @@ CREATE TABLE "UserVerificationCodes" (
     CONSTRAINT "UserVerificationCodes_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "AIGeneratedPost" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "workspaceId" INTEGER,
+    "prompt" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "creditCost" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AIGeneratedPost_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CreditTransaction" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "amount" INTEGER NOT NULL,
+    "description" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "aIGeneratedPostId" INTEGER,
+
+    CONSTRAINT "CreditTransaction_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "_UserWorkspaces" (
+    "A" INTEGER NOT NULL,
+    "B" INTEGER NOT NULL
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -120,6 +203,33 @@ CREATE UNIQUE INDEX "User_user_name_key" ON "User"("user_name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_unique_code_key" ON "User"("unique_code");
+
+-- CreateIndex
+CREATE INDEX "User_id_idx" ON "User"("id");
+
+-- CreateIndex
+CREATE INDEX "Workspace_id_idx" ON "Workspace"("id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "LinkedInProfile_profileId_key" ON "LinkedInProfile"("profileId");
+
+-- CreateIndex
+CREATE INDEX "LinkedInProfile_userId_idx" ON "LinkedInProfile"("userId");
+
+-- CreateIndex
+CREATE INDEX "Post_userId_idx" ON "Post"("userId");
+
+-- CreateIndex
+CREATE INDEX "Post_workspaceId_idx" ON "Post"("workspaceId");
+
+-- CreateIndex
+CREATE INDEX "Post_linkedInProfileId_idx" ON "Post"("linkedInProfileId");
+
+-- CreateIndex
+CREATE INDEX "Post_aiGeneratedPostId_idx" ON "Post"("aiGeneratedPostId");
+
+-- CreateIndex
+CREATE INDEX "PostLog_postId_idx" ON "PostLog"("postId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "UserTokens_family_key" ON "UserTokens"("family");
@@ -140,6 +250,9 @@ CREATE INDEX "Subscription_userId_idx" ON "Subscription"("userId");
 CREATE INDEX "Carousel_userId_idx" ON "Carousel"("userId");
 
 -- CreateIndex
+CREATE INDEX "Carousel_workspaceId_idx" ON "Carousel"("workspaceId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "UserBranding_userId_key" ON "UserBranding"("userId");
 
 -- CreateIndex
@@ -153,3 +266,18 @@ CREATE UNIQUE INDEX "UserVerificationCodes_code_key" ON "UserVerificationCodes"(
 
 -- CreateIndex
 CREATE INDEX "UserVerificationCodes_user_id_idx" ON "UserVerificationCodes"("user_id");
+
+-- CreateIndex
+CREATE INDEX "AIGeneratedPost_userId_idx" ON "AIGeneratedPost"("userId");
+
+-- CreateIndex
+CREATE INDEX "AIGeneratedPost_workspaceId_idx" ON "AIGeneratedPost"("workspaceId");
+
+-- CreateIndex
+CREATE INDEX "CreditTransaction_userId_idx" ON "CreditTransaction"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "_UserWorkspaces_AB_unique" ON "_UserWorkspaces"("A", "B");
+
+-- CreateIndex
+CREATE INDEX "_UserWorkspaces_B_index" ON "_UserWorkspaces"("B");
