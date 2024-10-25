@@ -29,7 +29,6 @@ model User {
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
   login_provider        String                  @db.VarChar(50)
-  Workspaces            Workspace[]             @relation("UserWorkspaces")
   LinkedInProfiles      LinkedInProfile[]
   LinkedInPosts         LinkedInPost[]
   Carousels             Carousel[]
@@ -39,6 +38,7 @@ model User {
   UserBranding          UserBranding?
   Files                 File[]
   AIWordUsage           AIWordUsage?
+  Workspaces            Workspace[]
 
   @@index([id])
 }
@@ -46,11 +46,12 @@ model User {
 model Workspace {
   id            Int            @id @default(autoincrement())
   name          String
+  isDefault     Boolean        @default(false)
   createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @default(now())
-  users         User[]         @relation("UserWorkspaces")
-  carousels     Carousel[]
+  updatedAt     DateTime       @updatedAt
+  users         User[]
   linkedInPosts LinkedInPost[]
+  carousels     Carousel[]
 
   @@index([id])
 }
@@ -100,10 +101,10 @@ model LinkedInPost {
   videoTitle          String?
   publishingErrorCode String?
   userId              Int
-  workspaceId         Int?
+  workspaceId         Int
   linkedInProfileId   Int
   user                User            @relation(fields: [userId], references: [id])
-  workspace           Workspace?      @relation(fields: [workspaceId], references: [id])
+  workspace           Workspace       @relation(fields: [workspaceId], references: [id])
   linkedInProfile     LinkedInProfile @relation(fields: [linkedInProfileId], references: [id])
   postLogs            PostLog[]
 
@@ -161,9 +162,9 @@ model Carousel {
   data        Json
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  workspaceId Int?
+  workspaceId Int
   user        User       @relation(fields: [userId], references: [id])
-  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id])
 
   @@index([userId])
   @@index([workspaceId])
@@ -212,15 +213,6 @@ model UserVerificationCodes {
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
-}
-
-model UserWorkspaces {
-  A Int
-  B Int
-
-  @@unique([A, B], map: "_UserWorkspaces_AB_unique")
-  @@index([B], map: "_UserWorkspaces_B_index")
-  @@map("_UserWorkspaces")
 }
 
 model AIWordUsage {
