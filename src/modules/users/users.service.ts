@@ -11,20 +11,15 @@ import {
   successResponse,
 } from 'src/shared/helpers/functions';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UserResponse } from './dto/user-response';
 
 import { ForgotPassMailNotification } from 'src/notifications/user/forgot-pass-mail-notification';
 import { PrismaService } from '../prisma/prisma.service';
 import { coreConstant } from 'src/shared/helpers/coreConstant';
 import { UserVerificationCodeService } from '../verification_code/user-verify-code.service';
 import { NotificationService } from 'src/shared/notification/notification.service';
-import { SignupVerificationMailNotification } from 'src/notifications/user/signup-verification-mail-notification';
 import { ResponseModel } from 'src/shared/models/response.model';
-import { use } from 'passport';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { isNumber } from 'class-validator';
 
-// export type User = any;
 @Injectable()
 export class UsersService {
   constructor(
@@ -79,37 +74,63 @@ export class UsersService {
   }
 
   // create new user process
-  async createNewUser(payload: any) {
+  async createNewUser(payload: any): Promise<ResponseModel> {
     try {
-      const user = await this.prisma.user.create({
-        data: {
-          ...payload,
-          unique_code: createUniqueCode(),
-        },
-      });
-      if (user) {
-        // const mailKey = generateMailKey();
-        // const codeData = {
-        //   user_id: user.id,
-        //   code: mailKey,
-        //   type: coreConstant.VERIFICATION_TYPE_EMAIL,
-        // };
-        // await this.userCodeService.createUserCode(codeData);
+      const result = await this.prisma.$transaction(async (prisma) => {
+        // Create the user
+        const user = await prisma.user.create({
+          data: {
+            ...payload,
+            unique_code: createUniqueCode(),
+          },
+        });
+        let workspace = await prisma.workspace.findFirst({
+          where: {
+            userId: user.id,
+          },
+        });
+        // Create a default workspace for the user
+        if (!workspace) {
+          workspace = await prisma.workspace.create({
+            data: {
+              name: `${user.first_name || user.email}'s Workspace`,
+              isDefault: true,
+              userId: user.id,
+            },
+          });
+        }
 
-        // const mailData = {
-        //   verification_code: mailKey,
-        // };
-        // await this.userCodeService.createUserCode(codeData);
-        // this.notificationService.send(
-        //   new SignupVerificationMailNotification(mailData),
-        //   user,
-        // );
-        return successResponse('New user created successfully', user);
+        return { user, workspace };
+      });
+
+      if (result.user && result.workspace) {
+        if (result.user) {
+          // const mailKey = generateMailKey();
+          // const codeData = {
+          //   user_id: user.id,
+          //   code: mailKey,
+          //   type: coreConstant.VERIFICATION_TYPE_EMAIL,
+          // };
+          // await this.userCodeService.createUserCode(codeData);
+          // const mailData = {
+          //   verification_code: mailKey,
+          // };
+          // await this.userCodeService.createUserCode(codeData);
+          // this.notificationService.send(
+          //   new SignupVerificationMailNotification(mailData),
+          //   user,
+          // );
+        }
+
+        return successResponse(
+          'New user created successfully with default workspace',
+          result.user,
+        );
       }
     } catch (err) {
-      console.log(err);
+      console.error('Error creating new user:', err);
+      return errorResponse('Something went wrong', []);
     }
-    return errorResponse('Something went wrong', []);
   }
 
   // get user by email

@@ -23,10 +23,12 @@ export class FileController {
   constructor(private readonly fileService: FileService) {}
 
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file', {
-    storage: memoryStorage(),
-    ...multerUploadConfig
-  }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      ...multerUploadConfig,
+    }),
+  )
   async uploadFile(
     @UploadedFile() file: Express.Multer.File,
     @UserInfo() user: User,
@@ -49,13 +51,13 @@ export class FileController {
   }
 
   @Get('file/:id')
-  async getFile(@Param('id') id: string): Promise<ResponseModel> {
+  async getFile(@Param('id') id: number): Promise<ResponseModel> {
     return this.fileService.getFile(id);
   }
 
   @Delete(':id')
   async deleteFile(
-    @Param('id') id: string,
+    @Param('id') id: number,
     @UserInfo() user: User,
   ): Promise<ResponseModel> {
     return this.fileService.deleteFile(id, user);

@@ -244,8 +244,18 @@ export class AuthService {
   }): Promise<void> {
     const expiresAt = getTokenExpirationDate();
 
+    if (!refreshTokenCredentials.userId) {
+      throw new Error('User ID is required to save refresh token');
+    }
+
     await this.prisma.userTokens.create({
-      data: { ...refreshTokenCredentials, expiresAt },
+      data: {
+        userId: refreshTokenCredentials.userId,
+        refreshToken: refreshTokenCredentials.refreshToken,
+        family: refreshTokenCredentials.family,
+        browserInfo: refreshTokenCredentials.browserInfo,
+        expiresAt,
+      },
     });
   }
 
@@ -409,6 +419,7 @@ export class AuthService {
       }
 
       let user = await this.findOrCreateGoogleUser(payload);
+      console.log(user.id, 'here is user id');
 
       const [accessToken, refreshToken] = await Promise.all([
         this.generateAccessToken({ sub: user.id, email: user.email }),
@@ -421,7 +432,10 @@ export class AuthService {
       return this.createLoginResponse(user, accessToken, refreshToken);
     } catch (err) {
       console.error('Google login error:', err);
-      return errorResponse('Invalid Google token', []);
+      if (err instanceof UnauthorizedException) {
+        return errorResponse(err.message, []);
+      }
+      return errorResponse('Failed to process Google login', []);
     }
   }
 
@@ -446,12 +460,20 @@ export class AuthService {
         email_verified: coreConstant.IS_VERIFIED,
         login_provider: LOGIN_PROVIDER.GOOGLE,
       });
+      console.log(createUserResponse.data, 'here is create user response');
 
-      if (!createUserResponse.success) {
+      if (!createUserResponse.success || !createUserResponse.data) {
         throw new Error('Failed to create user');
       }
 
       user = createUserResponse.data as User;
+
+      // Fetch the newly created user to ensure we have all fields
+      const newUser = await this.userService.findByEmail(email);
+      if (!newUser) {
+        throw new Error('Failed to retrieve newly created user');
+      }
+      return newUser;
     } else if (user.login_provider !== LOGIN_PROVIDER.GOOGLE) {
       throw new UnauthorizedException(
         'Email already exists with a different login method',

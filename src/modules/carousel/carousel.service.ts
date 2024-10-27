@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CreateCarouselDto } from './dto/create-carousel.dto';
-import { User } from '../users/entities/user.entity';
+import { Prisma, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { ResponseModel } from 'src/shared/models/response.model';
-import { errorResponse, successResponse } from 'src/shared/helpers/functions';
 import { UpdateCarouselDto } from './dto/update-carousel.dto';
 import {
   paginatedQuery,
@@ -18,19 +16,27 @@ import {
 import { GenerateCarouselContentDto } from './dto/generate-caorusel-content.dto';
 import { Carousel } from '@prisma/client';
 import { ApiUnsupportedMediaTypeResponse } from '@nestjs/swagger';
+import { ResponseModel } from 'src/shared/models/response.model';
+import { errorResponse, successResponse } from 'src/shared/helpers/functions';
+import { CarouselPaginationOptions } from './types/carousel';
 
 @Injectable()
 export class CarouselService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createCarousel(
-    createCarouselDto: Carousel,
+    createCarouselDto: CreateCarouselDto,
     user: User,
   ): Promise<ResponseModel> {
     try {
       const carousel = await this.prisma.carousel.create({
         data: {
-          data: createCarouselDto.data,
+          data: createCarouselDto.data as Prisma.InputJsonValue,
+          workspace: {
+            connect: {
+              id: createCarouselDto.workspaceId,
+            },
+          },
           user: {
             connect: {
               id: user.id,
@@ -50,16 +56,17 @@ export class CarouselService {
   }
 
   async updateCarousel(
-    updateCarouselDto: Carousel,
+    updateCarouselDto: UpdateCarouselDto,
     user: User,
   ): Promise<ResponseModel> {
     try {
       const carousel = await this.prisma.carousel.update({
         where: {
           id: updateCarouselDto.id,
+          userId: user.id,
         },
         data: {
-          data: updateCarouselDto.data,
+          data: updateCarouselDto.data as Prisma.InputJsonValue,
         },
       });
       if (!carousel) {
@@ -72,11 +79,12 @@ export class CarouselService {
     }
   }
 
-  async deleteCarousel(id: string): Promise<ResponseModel> {
+  async deleteCarousel(id: number, user: User): Promise<ResponseModel> {
     try {
       const carousel = await this.prisma.carousel.delete({
         where: {
           id,
+          userId: user.id,
         },
       });
       if (!carousel) {
@@ -88,15 +96,21 @@ export class CarouselService {
     }
   }
 
-  async getCarousel(id: string): Promise<ResponseModel> {
+  async getCarousel(
+    id: number,
+    user: User,
+    workspaceId?: number,
+  ): Promise<ResponseModel> {
     try {
       const carousel = await this.prisma.carousel.findUnique({
         where: {
           id,
+          userId: user.id,
+          workspaceId: workspaceId,
         },
       });
       if (!carousel) {
-        return errorResponse('Carousel not found');
+        return errorResponse('Carousel not found', null);
       }
       return successResponse('Carousel found successfully', carousel);
     } catch (error) {
@@ -106,13 +120,14 @@ export class CarouselService {
 
   async getCarouselsByUser(
     user: User,
-    options: PaginationOptions = {},
+    options: CarouselPaginationOptions = {},
+    workspaceId: number,
   ): Promise<ResponseModel> {
     try {
       const result = await paginatedQuery(
         this.prisma,
         'carousel',
-        { userId: user.id },
+        { userId: user.id, workspaceId: workspaceId },
         { ...options, orderBy: { createdAt: 'desc' } },
       );
 

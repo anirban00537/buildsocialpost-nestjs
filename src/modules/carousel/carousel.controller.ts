@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Put,
   Query,
@@ -11,12 +12,12 @@ import {
 import { CarouselService } from './carousel.service';
 import { CreateCarouselDto } from './dto/create-carousel.dto';
 import { UserInfo } from 'src/shared/decorators/user.decorators';
-import { User } from '../users/entities/user.entity';
 import { ResponseModel } from 'src/shared/models/response.model';
 import { UpdateCarouselDto } from './dto/update-carousel.dto';
 import { GenerateCarouselContentDto } from './dto/generate-caorusel-content.dto';
-import { Carousel } from '@prisma/client';
+import { Carousel, User } from '@prisma/client';
 import { IsAdmin } from 'src/shared/decorators/is-admin.decorator';
+import { GetCarouselQueryDto, GetCarouselsQueryDto } from './dto/query.dto';
 
 @Controller('my-carousels')
 export class CarouselController {
@@ -24,7 +25,7 @@ export class CarouselController {
 
   @Post('create')
   createCarousel(
-    @Body() createCarouselDto: Carousel,
+    @Body() createCarouselDto: CreateCarouselDto,
     @UserInfo() user: User,
   ): Promise<ResponseModel> {
     return this.carouselService.createCarousel(createCarouselDto, user);
@@ -32,29 +33,39 @@ export class CarouselController {
 
   @Put('update')
   updateCarousel(
-    @Body() updateCarouselDto: Carousel,
+    @Body() updateCarouselDto: UpdateCarouselDto,
     @UserInfo() user: User,
   ): Promise<ResponseModel> {
     return this.carouselService.updateCarousel(updateCarouselDto, user);
   }
 
   @Delete('delete/:id')
-  deleteCarousel(@Param('id') id: string): Promise<ResponseModel> {
-    return this.carouselService.deleteCarousel(id);
+  deleteCarousel(
+    @Param('id', ParseIntPipe) id: number,
+    @UserInfo() user: User,
+  ): Promise<ResponseModel> {
+    return this.carouselService.deleteCarousel(id, user);
   }
 
   @Get('get')
   getCarousels(
     @UserInfo() user: User,
-    @Query('page') page: number,
-    @Query('pageSize') pageSize: number,
+    @Query() query: GetCarouselsQueryDto,
   ): Promise<ResponseModel> {
-    return this.carouselService.getCarouselsByUser(user, { page, pageSize });
+    return this.carouselService.getCarouselsByUser(user, {
+      page: query.page,
+      pageSize: query.pageSize,
+    },
+    query.workspaceId,
+    );
   }
 
   @Get('get-details')
-  getCarousel(@Query('id') id: string): Promise<ResponseModel> {
-    return this.carouselService.getCarousel(id);
+  getCarousel(
+    @Query() query: GetCarouselQueryDto,
+    @UserInfo() user: User,
+  ): Promise<ResponseModel> {
+    return this.carouselService.getCarousel(query.id, user, query.workspaceId);
   }
 
   @Post('generate-carousel-content')

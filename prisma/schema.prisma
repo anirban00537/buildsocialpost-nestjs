@@ -46,33 +46,36 @@ model User {
 model Workspace {
   id            Int            @id @default(autoincrement())
   name          String
+  description   String?
   isDefault     Boolean        @default(false)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  users         User[]
+  userId        Int
+  user          User           @relation(fields: [userId], references: [id])
   linkedInPosts LinkedInPost[]
   carousels     Carousel[]
 
   @@index([id])
+  @@index([userId]) // Add this line to create an index on userId
 }
 
 model LinkedInProfile {
-  id                   Int            @id @default(autoincrement())
-  userId               Int
-  profileId            String         @unique
-  accessToken          String
-  name                 String
-  email                String
-  avatarUrl            String?
-  clientId             String
-  creatorId            String
-  linkedInProfileUrl   String?
-  tokenExpiringAt      DateTime
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
-  user                 User           @relation(fields: [userId], references: [id])
-  linkedInPosts        LinkedInPost[]
-  workspaceId          String?
+  id                 Int            @id @default(autoincrement())
+  userId             Int
+  profileId          String         @unique
+  accessToken        String
+  name               String
+  email              String
+  avatarUrl          String?
+  clientId           String
+  creatorId          String
+  linkedInProfileUrl String?
+  tokenExpiringAt    DateTime
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  user               User           @relation(fields: [userId], references: [id])
+  linkedInPosts      LinkedInPost[]
+  workspaceId        String?
 
   @@index([userId])
   @@index([workspaceId])
@@ -139,7 +142,7 @@ model UserTokens {
 }
 
 model Subscription {
-  id                         String   @id @default(cuid())
+  id                         Int      @id @default(autoincrement())
   userId                     Int      @unique
   orderId                    String   @unique
   status                     String
@@ -157,21 +160,21 @@ model Subscription {
 }
 
 model Carousel {
-  id          String     @id @default(uuid())
+  id          Int       @id @default(autoincrement())
   userId      Int
   data        Json
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   workspaceId Int
-  user        User       @relation(fields: [userId], references: [id])
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
 
   @@index([userId])
   @@index([workspaceId])
 }
 
 model UserBranding {
-  id        String   @id @default(uuid())
+  id        Int      @id @default(autoincrement())
   userId    Int      @unique
   name      String
   handle    String
@@ -184,7 +187,7 @@ model UserBranding {
 }
 
 model File {
-  id           String   @id @default(uuid())
+  id           Int      @id @default(autoincrement())
   userId       Int
   name         String
   originalName String

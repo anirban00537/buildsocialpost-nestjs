@@ -17,6 +17,7 @@ import { LoggerModule } from '../logger/logger.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { FileModule } from '../file/file.module';
 import { AdminModule } from '../admin/admin.module';
+import { WorkspaceModule } from '../workspace/workspace.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AdminModule } from '../admin/admin.module';
     SubscriptionModule,
     FileModule,
     AdminModule,
+    WorkspaceModule,
   ],
   providers: [
     {

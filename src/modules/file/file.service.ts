@@ -117,7 +117,7 @@ export class FileService {
     }
   }
 
-  async getFile(id: string): Promise<ResponseModel> {
+  async getFile(id: number): Promise<ResponseModel> {
     try {
       const file = await this.prisma.file.findUnique({
         where: { id },
@@ -134,7 +134,7 @@ export class FileService {
     }
   }
 
-  async deleteFile(id: string, user: User): Promise<ResponseModel> {
+  async deleteFile(id: number, user: User): Promise<ResponseModel> {
     try {
       const file = await this.prisma.file.findUnique({
         where: { id, userId: user.id },

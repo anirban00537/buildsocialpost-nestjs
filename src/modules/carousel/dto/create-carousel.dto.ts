@@ -1,6 +1,8 @@
-import { IsString, IsObject, IsOptional, IsArray } from 'class-validator';
+import { IsString, IsObject, IsOptional, IsNumber } from 'class-validator';
 
 export class CreateCarouselDto {
   @IsObject()
   data: Object;
+  @IsNumber()
+  workspaceId: number;
 }
