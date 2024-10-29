@@ -7,13 +7,6 @@ import {
   paginatedQuery,
   PaginationOptions,
 } from 'src/shared/utils/pagination.util';
-import {
-  generateCarouselColorPaletteFromPromptTopic,
-  generateCaruselContentFromTopic,
-  parseCarouselContentToJSON,
-  parseColorPaletteToJSON,
-} from 'src/shared/helpers/openai';
-import { GenerateCarouselContentDto } from './dto/generate-caorusel-content.dto';
 import { Carousel } from '@prisma/client';
 import { ApiUnsupportedMediaTypeResponse } from '@nestjs/swagger';
 import { ResponseModel } from 'src/shared/models/response.model';
@@ -142,43 +135,6 @@ export class CarouselService {
     }
   }
 
-  async generateCarouselContent(
-    dto: GenerateCarouselContentDto,
-  ): Promise<ResponseModel> {
-    try {
-      const content: any = await generateCaruselContentFromTopic(
-        dto.topic,
-        dto.numSlides,
-        dto.language,
-        dto.mood,
-        dto.contentStyle,
-        dto.targetAudience,
-      );
-
-      let colorPaletteResponse = null;
-
-      if (dto.themeActive) {
-        colorPaletteResponse =
-          await generateCarouselColorPaletteFromPromptTopic(
-            dto.topic,
-            dto.theme,
-          );
-      }
-
-      const response = parseCarouselContentToJSON(content ?? '');
-      const colorPalette =
-        colorPaletteResponse !== null
-          ? parseColorPaletteToJSON(colorPaletteResponse ?? '')
-          : null;
-
-      return successResponse('Carousel content generated successfully', {
-        response,
-        colorPalette,
-      });
-    } catch (error) {
-      return errorResponse('Error generating carousel content');
-    }
-  }
   async getAllCarousels(
     options: PaginationOptions = {},
   ): Promise<ResponseModel> {

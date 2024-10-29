@@ -18,6 +18,7 @@ import { SubscriptionModule } from '../subscription/subscription.module';
 import { FileModule } from '../file/file.module';
 import { AdminModule } from '../admin/admin.module';
 import { WorkspaceModule } from '../workspace/workspace.module';
+import { AiContentModule } from '../ai-content/ai-content.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { WorkspaceModule } from '../workspace/workspace.module';
     FileModule,
     AdminModule,
     WorkspaceModule,
+    AiContentModule,
   ],
   providers: [
     {

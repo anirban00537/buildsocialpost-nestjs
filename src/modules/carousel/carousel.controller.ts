@@ -14,7 +14,6 @@ import { CreateCarouselDto } from './dto/create-carousel.dto';
 import { UserInfo } from 'src/shared/decorators/user.decorators';
 import { ResponseModel } from 'src/shared/models/response.model';
 import { UpdateCarouselDto } from './dto/update-carousel.dto';
-import { GenerateCarouselContentDto } from './dto/generate-caorusel-content.dto';
 import { Carousel, User } from '@prisma/client';
 import { IsAdmin } from 'src/shared/decorators/is-admin.decorator';
 import { GetCarouselQueryDto, GetCarouselsQueryDto } from './dto/query.dto';
@@ -52,11 +51,13 @@ export class CarouselController {
     @UserInfo() user: User,
     @Query() query: GetCarouselsQueryDto,
   ): Promise<ResponseModel> {
-    return this.carouselService.getCarouselsByUser(user, {
-      page: query.page,
-      pageSize: query.pageSize,
-    },
-    query.workspaceId,
+    return this.carouselService.getCarouselsByUser(
+      user,
+      {
+        page: query.page,
+        pageSize: query.pageSize,
+      },
+      query.workspaceId,
     );
   }
 
@@ -68,12 +69,6 @@ export class CarouselController {
     return this.carouselService.getCarousel(query.id, user, query.workspaceId);
   }
 
-  @Post('generate-carousel-content')
-  generateCarouselContent(
-    @Body() dto: GenerateCarouselContentDto,
-  ): Promise<ResponseModel> {
-    return this.carouselService.generateCarouselContent(dto);
-  }
   @IsAdmin()
   @Get('get-all-carousels')
   getAllCarousels(
