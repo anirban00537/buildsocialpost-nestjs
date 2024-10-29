@@ -204,60 +204,67 @@ export class OpenAIService {
     prompt: string,
     language: string = 'en',
     tone: string = 'professional',
-    writingStyle: string = 'informative',
+    writingStyle: string = 'educational',
   ): Promise<string> {
     try {
+      const toneGuide = {
+        professional: 'Use polished, industry-expert voice',
+        casual: 'Write in a relaxed, approachable manner',
+        friendly: 'Maintain a warm, welcoming tone',
+        authoritative: 'Project expertise and leadership',
+        humorous: 'Include light-hearted, witty elements',
+        formal: 'Maintain sophisticated, business-appropriate language',
+        inspirational: 'Use motivational, uplifting messaging',
+        technical: 'Employ precise, technical terminology',
+      };
+
+      const styleGuide = {
+        storytelling: 'narrative-driven with compelling plot',
+        direct: 'straightforward and to-the-point',
+        educational: 'informative with clear learning points',
+        persuasive: 'convincing arguments and clear benefits',
+        analytical: 'data-driven insights and logical analysis',
+        conversational: 'natural dialogue-like flow',
+        descriptive: 'rich details and vivid explanations',
+        engaging: 'interactive and attention-grabbing',
+      };
+
       const response = await this.openai.chat.completions.create({
         model: 'gpt-4o-mini-2024-07-18',
         messages: [
           {
             role: 'user',
-            content: `Create a viral LinkedIn post about "${prompt}" in ${language} with a ${tone} yet conversational tone.
+            content: `Create a viral LinkedIn post about "${prompt}" that will drive engagement.
 
-            [Main Post]
-            content:
+            Style: ${toneGuide[tone]} with ${styleGuide[writingStyle]}
+            Language: ${language}
 
-            Guidelines:
-            - Start with a powerful hook using one of these angles:
-              - Challenge a common belief
-              - Share a counterintuitive insight
-              - Present a surprising statistic
-              - Tell a mini-story
-              - Make a bold statement
+            Post Structure:
+            1. Hook (choose one):
+               - Challenge a belief
+               - Share surprising insight
+               - Present key statistic
+               - Tell mini-story
+               - Make bold statement
 
-            Tone & Writing Style based on selected tone (${tone}) and writing style (${writingStyle}):
-            - professional: Data-driven, authoritative, polished, industry expertise
-            - casual: Friendly, relatable, using everyday language
-            - formal: Sophisticated, well-researched, academic approach
-            - friendly: Warm, approachable, personal stories
-            - enthusiastic: High-energy, passionate, inspiring
-            - informative: Educational, clear explanations, practical
-            - authoritative: Expert voice, confident, leadership perspective
-            - conversational: Natural dialogue, engaging questions
+            2. Content Requirements:
+               - Support main point with evidence/experience
+               - Include specific example or case
+               - Add actionable takeaway
+               - End with engaging question
 
-            Writing Techniques:
-            - Use power words for impact
-            - Start sentences with verbs
-            - Include personal experiences
-            - Add relevant industry context
-            - Share specific examples
-            - Use concrete numbers when possible
-            - Create curiosity gaps
-            - End with thought-provoking questions
-
-            Format requirements:
-              - NO markdown formatting (no **, #, *, _, etc.)
+            Format:
+             - NO markdown formatting (no **, #, *, _, etc.)
               - NO HTML tags
               - Plain text only
               - Use emojis sparingly for visual breaks
-            
-            Structure:
-              - Use \n\n for new paragraphs
-              - Keep paragraphs short (2-3 lines)
-              - Use simple bullet points (•) or numbers when listing
-              - Use plain text arrows (->) for transitions
-            
-            Keep it under 1300 characters. Focus on unique, actionable insights. Do not include any additional text, explanations, or formatting instructions in the output.`,
+            - Use \n\n for paragraphs
+            - Short paragraphs (2-3 lines)
+            - Simple bullet points (•) or numbers
+            - Arrows (->) for transitions
+            - Strategic emojis (max 3-4)
+
+            Keep under 1300 characters. Focus on value and authenticity.`,
           },
         ],
         max_tokens: 1000,
