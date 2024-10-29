@@ -17,7 +17,6 @@ type Slide = {
 };
 
 interface LinkedInPost {
-  title: string;
   content: string;
 }
 
@@ -203,107 +202,65 @@ export class OpenAIService {
 
   async generateLinkedInPosts(
     prompt: string,
-    numPosts: number = 3,
     language: string = 'en',
     tone: string = 'professional',
+    writingStyle: string = 'informative',
   ): Promise<string> {
     try {
-      const maxTokensPerPost = 500;
-      const maxTokens = Math.min(numPosts * maxTokensPerPost, 2000);
-
       const response = await this.openai.chat.completions.create({
         model: 'gpt-4o-mini-2024-07-18',
         messages: [
           {
             role: 'user',
-            content: `You are a viral LinkedIn content expert who has helped 100+ posts go viral. Create ${numPosts} compelling LinkedIn posts about "${prompt}" that will drive massive engagement.
+            content: `Create a viral LinkedIn post about "${prompt}" in ${language} with a ${tone} yet conversational tone.
 
-            [Post 1]
-            title: Your title here
-            content: Your content here
+            [Main Post]
+            content:
 
-            [Post 2]
-            title: Your title here
-            content: Your content here
+            Guidelines:
+            - Start with a powerful hook using one of these angles:
+              - Challenge a common belief
+              - Share a counterintuitive insight
+              - Present a surprising statistic
+              - Tell a mini-story
+              - Make a bold statement
 
-            Content Creation Framework:
+            Tone & Writing Style based on selected tone (${tone}) and writing style (${writingStyle}):
+            - professional: Data-driven, authoritative, polished, industry expertise
+            - casual: Friendly, relatable, using everyday language
+            - formal: Sophisticated, well-researched, academic approach
+            - friendly: Warm, approachable, personal stories
+            - enthusiastic: High-energy, passionate, inspiring
+            - informative: Educational, clear explanations, practical
+            - authoritative: Expert voice, confident, leadership perspective
+            - conversational: Natural dialogue, engaging questions
 
-            1. 🎯 HEADLINE FORMULAS (Choose one):
-               • "I Discovered [Unexpected Solution] for [Common Problem]..."
-               • "[X] Things Nobody Tells You About [Topic]..."
-               • "The Truth About [Topic] That [Industry] Doesn't Want You to Know..."
-               • "How I [Achieved Result] in [Timeframe] Using [Method]..."
-               • "Why [Common Belief] Is Wrong, And What To Do Instead..."
+            Writing Techniques:
+            - Use power words for impact
+            - Start sentences with verbs
+            - Include personal experiences
+            - Add relevant industry context
+            - Share specific examples
+            - Use concrete numbers when possible
+            - Create curiosity gaps
+            - End with thought-provoking questions
 
-            2. 🚀 POST STRUCTURE:
-               a) 💥 HOOK (First 2 lines):
-                  • Start with "I was wrong about [topic]..."
-                  • Or "The biggest mistake in [industry] is..."
-                  • Or "Here's what [X] years in [industry] taught me..."
-                  • Must stop readers from scrolling
-               
-               b) 📈 STORY/CONTEXT (2-3 lines):
-                  • Share a personal failure/success
-                  • Present a surprising statistic
-                  • Challenge common wisdom
-                  • Create tension/conflict
-               
-               c) 🎓 MAIN CONTENT (3-4 paragraphs):
-                  • Use the "PAS" formula:
-                    Problem: Identify the pain point
-                    Agitation: Why it matters
-                    Solution: Your unique insight
-                  
-                  • Format for scanning:
-                    → Use arrows for key points
-                    • Bullet points for lists
-                    1. Numbers for steps
-                    ... Ellipsis for suspense
-                    
-                  • Add credibility markers:
-                    - "What most don't realize is..."
-                    - "The secret lies in..."
-                    - "Based on my experience..."
-                    - "After analyzing [X] cases..."
-               
-               d) 💎 VALUE BOMBS:
-                  • Include 2-3 actionable takeaways
-                  • Format as:
-                    🔥 Key Insight 1
-                    ⚡️ Key Insight 2
-                    💡 Key Insight 3
-               
-               e) 🎬 VIRAL CLOSE:
-                  • Ask a polarizing question
-                  • Challenge conventional wisdom
-                  • Prompt for experiences
-                  • End with "Agree/Disagree?"
-
-            3. 🎨 FORMATTING ESSENTIALS:
-               • Break every 1-2 sentences
-               • Use emojis strategically (not every line)
-               • Bold key phrases with **asterisks**
-               • Create visual hierarchy with spacing
-               • Use → arrows for cause/effect
-               • Add ... for dramatic pauses
-
-            4. 🎭 EMOTIONAL TRIGGERS:
-               • Controversy (challenge status quo)
-               • Validation (shared struggles)
-               • FOMO (exclusive insights)
-               • Hope (achievable solutions)
-               • Curiosity (unexpected twists)
-
-            Language: ${language}
-            Tone: ${tone} but conversational
-            Audience: Ambitious professionals seeking growth
-
-            Generate exactly ${numPosts} posts following this framework. Each post should feel authentic, valuable, and compelling enough to save and share.
-
-            Start with [Post 1] and continue through [Post ${numPosts}]. Ensure each post is unique and tackles different aspects of "${prompt}".`,
+            Format requirements:
+              - NO markdown formatting (no **, #, *, _, etc.)
+              - NO HTML tags
+              - Plain text only
+              - Use emojis sparingly for visual breaks
+            
+            Structure:
+              - Use \n\n for new paragraphs
+              - Keep paragraphs short (2-3 lines)
+              - Use simple bullet points (•) or numbers when listing
+              - Use plain text arrows (->) for transitions
+            
+            Keep it under 1300 characters. Focus on unique, actionable insights. Do not include any additional text, explanations, or formatting instructions in the output.`,
           },
         ],
-        max_tokens: maxTokens,
+        max_tokens: 1000,
         temperature: 0.7,
       });
 
@@ -313,48 +270,41 @@ export class OpenAIService {
         throw new Error('No response from OpenAI');
       }
     } catch (error) {
-      this.logger.error('Error generating LinkedIn posts:', error);
+      this.logger.error('Error generating LinkedIn post:', error);
       throw error;
     }
   }
 
   parseLinkedInPostsToJSON(content: string): LinkedInPost[] {
-    const posts: LinkedInPost[] = [];
-    
-    // Split content by post markers
-    const postSections = content.split(/### \[Post \d+\]/).filter(section => section.trim());
+    try {
+      // Find the content after [Main Post]
+      const mainPostMatch = content.match(
+        /\[Main Post\]\s*content:\s*([\s\S]*?)(?=\d\.|$)/,
+      );
 
-    postSections.forEach(section => {
-      try {
-        // Extract title and content
-        const titleMatch = section.match(/\*\*Title: (.*?)\*\*/);
-        const contentMatch = section.match(/\*\*Content:\*\*([\s\S]*?)(?=---|\n\n|$)/);
+      if (mainPostMatch && mainPostMatch[1]) {
+        const postContent = mainPostMatch[1].trim();
 
-        if (titleMatch && contentMatch) {
-          const title = titleMatch[1].trim();
-          // Clean up the content: remove extra newlines, markdown, etc.
-          const cleanContent = contentMatch[1]
-            .trim()
-            .replace(/\*\*/g, '') // Remove bold markers
-            .replace(/\n{3,}/g, '\n\n') // Normalize multiple newlines
-            .replace(/^[\s\n]+|[\s\n]+$/g, ''); // Trim start and end
-
-          if (title && cleanContent) {
-            posts.push({
-              title,
-              content: cleanContent,
-            });
-          }
-        }
-      } catch (error) {
-        this.logger.error('Error parsing post section:', error);
-        // Continue with next section even if one fails
+        return [
+          {
+            content: postContent,
+          },
+        ];
       }
-    });
 
-    // Log for debugging
-    this.logger.debug(`Parsed ${posts.length} posts from content`);
-    
-    return posts;
+      // If no match found, return the entire content
+      return [
+        {
+          content: content.trim(),
+        },
+      ];
+    } catch (error) {
+      this.logger.error('Error parsing LinkedIn post:', error);
+      return [
+        {
+          content: content.trim(), // Return original content if parsing fails
+        },
+      ];
+    }
   }
 }

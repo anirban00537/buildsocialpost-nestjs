@@ -60,22 +60,17 @@ export class AiContentService {
     try {
       const rawContent: string = await this.openAIService.generateLinkedInPosts(
         dto.prompt,
-        dto.numPosts,
         dto.language,
         dto.tone,
+        dto.writingStyle,
       );
-      console.log(rawContent, 'rawContent');
+      console.log(rawContent,"raw")
 
-      // Parse the raw content into structured posts
-      const parsedPosts =
-        this.openAIService.parseLinkedInPostsToJSON(rawContent);
-
-      return successResponse('LinkedIn posts generated successfully', {
-        posts: parsedPosts,
-        total: parsedPosts.length,
+      return successResponse('LinkedIn post generated successfully', {
+        post: rawContent, // Return single post
       });
     } catch (error) {
-      return errorResponse('Error generating LinkedIn posts');
+      return errorResponse('Error generating LinkedIn post');
     }
   }
 }
