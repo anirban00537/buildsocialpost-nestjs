@@ -19,6 +19,7 @@ import { FileModule } from '../file/file.module';
 import { AdminModule } from '../admin/admin.module';
 import { WorkspaceModule } from '../workspace/workspace.module';
 import { AiContentModule } from '../ai-content/ai-content.module';
+import { ContentPostingModule } from '../content-posting/content-posting.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { AiContentModule } from '../ai-content/ai-content.module';
     AdminModule,
     WorkspaceModule,
     AiContentModule,
+    ContentPostingModule
   ],
   providers: [
     {

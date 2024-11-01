@@ -123,6 +123,8 @@ model PostLog {
   message        String?
   timestamp      DateTime     @default(now())
   linkedInPost   LinkedInPost @relation(fields: [linkedInPostId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@index([linkedInPostId])
 }

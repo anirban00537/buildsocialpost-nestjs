@@ -12,4 +12,39 @@ export const coreConstant = {
   SUBSCRIPTION_STATUS_ACTIVE: 'active',
   SUBSCRIPTION_STATUS_EXPIRED: 'expired',
   MAX_IMAGE_SIZE: 500 * 1024 * 1024, // 500MB
+
+  // Post Types
+  POST_TYPE: {
+    TEXT: 'text',
+    IMAGE: 'image',
+    VIDEO: 'video',
+    DOCUMENT: 'document',
+    CAROUSEL: 'carousel',
+  },
+
+  // Post Status
+  POST_STATUS: {
+    DRAFT: 0,
+    SCHEDULED: 1,
+    PUBLISHED: 2,
+    FAILED: 3,
+  },
+
+  // Post Log Status
+  POST_LOG_STATUS: {
+    DRAFT_CREATED: 'DRAFT_CREATED',
+    DRAFT_UPDATED: 'DRAFT_UPDATED',
+    SCHEDULED: 'SCHEDULED',
+    PUBLISHED: 'PUBLISHED',
+    FAILED: 'FAILED',
+  },
+
+  // Maximum limits
+  POST_LIMITS: {
+    MAX_HASHTAGS: 30,
+    MAX_MENTIONS: 50,
+    MAX_IMAGES: 9,
+    MAX_VIDEO_SIZE: 200 * 1024 * 1024, // 200MB
+    MAX_DOCUMENT_SIZE: 100 * 1024 * 1024, // 100MB
+  },
 };
