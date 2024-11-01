@@ -63,22 +63,20 @@ model LinkedInProfile {
   id                 Int            @id @default(autoincrement())
   userId             Int
   profileId          String         @unique
-  accessToken        String
-  name               String
-  email              String
-  avatarUrl          String?
+  accessToken        String         @db.Text
+  name               String?
+  email              String?
+  avatarUrl          String?        @db.Text
   clientId           String
   creatorId          String
-  linkedInProfileUrl String?
+  linkedInProfileUrl String?        @db.Text
   tokenExpiringAt    DateTime
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   user               User           @relation(fields: [userId], references: [id])
-  linkedInPosts      LinkedInPost[]
-  workspaceId        String?
+  LinkedInPost       LinkedInPost[]
 
   @@index([userId])
-  @@index([workspaceId])
 }
 
 model LinkedInPost {
@@ -106,9 +104,9 @@ model LinkedInPost {
   userId              Int
   workspaceId         Int
   linkedInProfileId   Int
+  linkedInProfile     LinkedInProfile @relation(fields: [linkedInProfileId], references: [id])
   user                User            @relation(fields: [userId], references: [id])
   workspace           Workspace       @relation(fields: [workspaceId], references: [id])
-  linkedInProfile     LinkedInProfile @relation(fields: [linkedInProfileId], references: [id])
   postLogs            PostLog[]
 
   @@index([userId])

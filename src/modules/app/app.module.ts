@@ -20,6 +20,7 @@ import { AdminModule } from '../admin/admin.module';
 import { WorkspaceModule } from '../workspace/workspace.module';
 import { AiContentModule } from '../ai-content/ai-content.module';
 import { ContentPostingModule } from '../content-posting/content-posting.module';
+import { LinkedInModule } from '../linkedin/linkedin.module';
 
 @Module({
   imports: [
@@ -39,7 +40,8 @@ import { ContentPostingModule } from '../content-posting/content-posting.module'
     AdminModule,
     WorkspaceModule,
     AiContentModule,
-    ContentPostingModule
+    ContentPostingModule,
+    LinkedInModule,
   ],
   providers: [
     {
