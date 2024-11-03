@@ -23,14 +23,16 @@ export class LinkedInService {
       const redirectUri = this.configService.get<string>('LINKEDIN_REDIRECT_URI');
       const state = Math.random().toString(36).substring(7);
 
-      // Store state with userId and log it
+      // Store state with userId
       this.stateMap.set(state, userId);
-      this.logger.debug(`Generated state for userId ${userId}: ${state}`);
+      console.log(`Generated state for userId ${userId}:`, state);
 
+      // Using the exact scopes from your OAuth 2.0 settings
       const scope = [
-        'openid',
-        'profile',
-        'w_member_social'
+        'openid',           // Use your name and photo
+        'profile',          // Use your name and photo
+        'w_member_social',  // Create, modify, and delete posts
+        'email'            // Use primary email address
       ].join(' ');
 
       const url =
@@ -52,35 +54,47 @@ export class LinkedInService {
 
   async handleOAuthCallback(code: string, state: string): Promise<ResponseModel> {
     try {
+      // Log initial callback data
+      console.log('=== OAuth Callback Started ===');
+      console.log('State received:', state);
+      console.log('Code length:', code.length);
+
       // Verify state and get userId
       const userId = this.stateMap.get(state);
-      this.logger.debug(`Handling callback for state: ${state}`);
-      this.logger.debug(`Found userId for state: ${userId}`);
+      console.log('Found userId:', userId);
 
       if (!userId) {
-        this.logger.error(`No userId found for state: ${state}`);
+        console.log('State validation failed - no userId found');
         return errorResponse('Invalid state parameter');
       }
 
       // Clean up state
       this.stateMap.delete(state);
+      console.log('State map cleared');
 
       // Get access token
-      this.logger.debug('Getting access token...');
+      console.log('Requesting access token...');
       const tokenData = await this.getAccessToken(code);
-      this.logger.debug('Access token received');
+      console.log('Access token received:', {
+        token_type: tokenData.token_type,
+        expires_in: tokenData.expires_in,
+      });
 
-      // Get user profile
-      this.logger.debug('Getting user profile...');
+      // Get user profile using OpenID userinfo
+      console.log('Getting user profile...');
       const profileData = await this.getUserProfile(tokenData.access_token);
-      this.logger.debug('User profile received:', profileData);
+      
+      if (!profileData.sub) {
+        throw new Error('No profile ID received from LinkedIn');
+      }
 
       const expiresAt = new Date();
       expiresAt.setSeconds(expiresAt.getSeconds() + tokenData.expires_in);
 
+      console.log('Upserting LinkedIn profile...');
       const linkedInProfile = await this.prisma.linkedInProfile.upsert({
         where: {
-          profileId: profileData.id,
+          profileId: profileData.sub,
         },
         create: {
           user: {
@@ -88,32 +102,45 @@ export class LinkedInService {
               id: userId
             }
           },
-          profileId: profileData.id,
+          profileId: profileData.sub,
           accessToken: tokenData.access_token,
-          name: `${profileData.localizedFirstName} ${profileData.localizedLastName}`,
-          avatarUrl: profileData.profilePicture?.['displayImage~']?.elements[0]?.identifiers[0]?.identifier || null,
+          name: profileData.name || 'LinkedIn User',
+          email: profileData.email,
+          avatarUrl: profileData.picture || null,
           clientId: this.configService.get('LINKEDIN_CLIENT_ID'),
-          creatorId: profileData.id,
+          creatorId: profileData.sub,
           tokenExpiringAt: expiresAt,
           linkedInProfileUrl: null,
         },
         update: {
           accessToken: tokenData.access_token,
-          name: `${profileData.localizedFirstName} ${profileData.localizedLastName}`,
-          avatarUrl: profileData.profilePicture?.['displayImage~']?.elements[0]?.identifiers[0]?.identifier || null,
+          name: profileData.name || 'LinkedIn User',
+          email: profileData.email,
+          avatarUrl: profileData.picture || null,
           tokenExpiringAt: expiresAt,
         },
       });
+
+      console.log('LinkedIn profile upserted successfully:', {
+        profileId: linkedInProfile.profileId,
+        name: linkedInProfile.name,
+        email: linkedInProfile.email,
+      });
+
+      console.log('=== OAuth Callback Completed Successfully ===');
 
       return successResponse('LinkedIn profile connected successfully', {
         profile: linkedInProfile,
       });
     } catch (error) {
-      this.logger.error('Error in handleOAuthCallback:', {
-        error: error.message,
-        stack: error.stack,
-        response: error.response?.data
-      });
+      console.log('=== OAuth Callback Error ===');
+      console.log('Error message:', error.message);
+      console.log('Error stack:', error.stack);
+      console.log('Response data:', error.response?.data);
+      console.log('Response status:', error.response?.status);
+      console.log('Response headers:', error.response?.headers);
+      console.log('=== End Error Log ===');
+
       return errorResponse(`Failed to handle OAuth callback: ${error.message}`);
     }
   }
@@ -161,23 +188,28 @@ export class LinkedInService {
 
   private async getUserProfile(accessToken: string): Promise<any> {
     try {
-      this.logger.debug('Getting user profile with token:', accessToken.substring(0, 10) + '...');
+      console.log('Getting user profile with token:', accessToken.substring(0, 10) + '...');
       
+      // Only use the OpenID userinfo endpoint
       const response = await axios.get(
-        `${this.baseUrl}/me?projection=(id,localizedFirstName,localizedLastName,profilePicture(displayImage~:playableStreams))`,
+        'https://api.linkedin.com/v2/userinfo',
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': this.apiVersion,
           },
         }
       );
 
-      this.logger.debug('User profile retrieved successfully');
+      console.log('User profile data received:', {
+        sub: response.data.sub,
+        name: response.data.name,
+        email: response.data.email,
+        picture: response.data.picture,
+      });
+
       return response.data;
     } catch (error) {
-      this.logger.error('Error getting user profile:', {
+      console.log('Error getting user profile:', {
         error: error.response?.data,
         status: error.response?.status,
         headers: error.response?.headers
