@@ -20,7 +20,9 @@ export class LinkedInService {
   async getAuthorizationUrl(userId: number): Promise<ResponseModel> {
     try {
       const clientId = this.configService.get<string>('LINKEDIN_CLIENT_ID');
-      const redirectUri = this.configService.get<string>('LINKEDIN_REDIRECT_URI');
+      const redirectUri = this.configService.get<string>(
+        'LINKEDIN_REDIRECT_URI',
+      );
       const state = Math.random().toString(36).substring(7);
 
       // Store state with userId
@@ -29,10 +31,10 @@ export class LinkedInService {
 
       // Using the exact scopes from your OAuth 2.0 settings
       const scope = [
-        'openid',           // Use your name and photo
-        'profile',          // Use your name and photo
-        'w_member_social',  // Create, modify, and delete posts
-        'email'            // Use primary email address
+        'openid', // Use your name and photo
+        'profile', // Use your name and photo
+        'w_member_social', // Create, modify, and delete posts
+        'email', // Use primary email address
       ].join(' ');
 
       const url =
@@ -48,11 +50,16 @@ export class LinkedInService {
         state,
       });
     } catch (error) {
-      return errorResponse(`Failed to generate authorization URL: ${error.message}`);
+      return errorResponse(
+        `Failed to generate authorization URL: ${error.message}`,
+      );
     }
   }
 
-  async handleOAuthCallback(code: string, state: string): Promise<ResponseModel> {
+  async handleOAuthCallback(
+    code: string,
+    state: string,
+  ): Promise<ResponseModel> {
     try {
       // Log initial callback data
       console.log('=== OAuth Callback Started ===');
@@ -83,7 +90,7 @@ export class LinkedInService {
       // Get user profile using OpenID userinfo
       console.log('Getting user profile...');
       const profileData = await this.getUserProfile(tokenData.access_token);
-      
+
       if (!profileData.sub) {
         throw new Error('No profile ID received from LinkedIn');
       }
@@ -99,8 +106,8 @@ export class LinkedInService {
         create: {
           user: {
             connect: {
-              id: userId
-            }
+              id: userId,
+            },
           },
           profileId: profileData.sub,
           accessToken: tokenData.access_token,
@@ -148,8 +155,12 @@ export class LinkedInService {
   private async getAccessToken(code: string): Promise<any> {
     try {
       const clientId = this.configService.get<string>('LINKEDIN_CLIENT_ID');
-      const clientSecret = this.configService.get<string>('LINKEDIN_CLIENT_SECRET');
-      const redirectUri = this.configService.get<string>('LINKEDIN_REDIRECT_URI');
+      const clientSecret = this.configService.get<string>(
+        'LINKEDIN_CLIENT_SECRET',
+      );
+      const redirectUri = this.configService.get<string>(
+        'LINKEDIN_REDIRECT_URI',
+      );
 
       this.logger.debug('Token exchange parameters:', {
         clientId,
@@ -171,7 +182,7 @@ export class LinkedInService {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-        }
+        },
       );
 
       this.logger.debug('Token exchange successful');
@@ -180,25 +191,27 @@ export class LinkedInService {
       this.logger.error('Token exchange error:', {
         error: error.response?.data,
         status: error.response?.status,
-        headers: error.response?.headers
+        headers: error.response?.headers,
       });
-      throw new Error(`Token exchange failed: ${error.response?.data?.error_description || error.message}`);
+      throw new Error(
+        `Token exchange failed: ${error.response?.data?.error_description || error.message}`,
+      );
     }
   }
 
   private async getUserProfile(accessToken: string): Promise<any> {
     try {
-      console.log('Getting user profile with token:', accessToken.substring(0, 10) + '...');
-      
-      // Only use the OpenID userinfo endpoint
-      const response = await axios.get(
-        'https://api.linkedin.com/v2/userinfo',
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+      console.log(
+        'Getting user profile with token:',
+        accessToken.substring(0, 10) + '...',
       );
+
+      // Only use the OpenID userinfo endpoint
+      const response = await axios.get('https://api.linkedin.com/v2/userinfo', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
 
       console.log('User profile data received:', {
         sub: response.data.sub,
@@ -212,9 +225,11 @@ export class LinkedInService {
       console.log('Error getting user profile:', {
         error: error.response?.data,
         status: error.response?.status,
-        headers: error.response?.headers
+        headers: error.response?.headers,
       });
-      throw new Error(`Failed to get user profile: ${error.response?.data?.message || error.message}`);
+      throw new Error(
+        `Failed to get user profile: ${error.response?.data?.message || error.message}`,
+      );
     }
   }
 
@@ -231,6 +246,7 @@ export class LinkedInService {
           avatarUrl: true,
           linkedInProfileUrl: true,
           tokenExpiringAt: true,
+          isDefault: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -242,7 +258,7 @@ export class LinkedInService {
 
       // Check for expired tokens
       const now = new Date();
-      const activeProfiles = profiles.map(profile => ({
+      const activeProfiles = profiles.map((profile) => ({
         ...profile,
         isTokenExpired: profile.tokenExpiringAt < now,
       }));
@@ -288,10 +304,139 @@ export class LinkedInService {
 
       // LinkedIn doesn't support refresh tokens for basic profile scope
       // For now, we'll just return a message to re-authenticate
-      return errorResponse('Token expired. Please reconnect your LinkedIn account');
+      return errorResponse(
+        'Token expired. Please reconnect your LinkedIn account',
+      );
     } catch (error) {
       this.logger.error('Error refreshing token:', error);
       return errorResponse(`Failed to refresh token: ${error.message}`);
     }
   }
+  async disconnectLinkedInProfile(
+    userId: number,
+    id: number,
+  ): Promise<ResponseModel> {
+    try {
+      // First check if the profile exists and belongs to the user
+      const profile = await this.prisma.linkedInProfile.findFirst({
+        where: {
+          AND: [{ id: id }, { userId }],
+        },
+      });
+
+      if (!profile) {
+        return errorResponse(
+          'LinkedIn profile not found or does not belong to this user',
+        );
+      }
+
+      // Then delete the profile
+      const deletedProfile = await this.prisma.linkedInProfile.delete({
+        where: {
+          id: id, // Use the internal ID which is unique
+        },
+      });
+
+      console.log('LinkedIn profile disconnected:', {
+        profileId: deletedProfile.profileId,
+        userId: deletedProfile.userId,
+      });
+
+      return successResponse('LinkedIn profile disconnected successfully', {
+        profile: deletedProfile,
+      });
+    } catch (error) {
+      console.log('Error disconnecting LinkedIn profile:', {
+        error: error.message,
+        userId,
+        id,
+      });
+
+      return errorResponse(
+        `Failed to disconnect LinkedIn profile: ${error.message}`,
+      );
+    }
+  }
+
+  async setDefaultProfile(
+    userId: number,
+    profileId: number,
+  ): Promise<ResponseModel> {
+    try {
+      // First check if the profile exists and belongs to the user
+      const profile = await this.prisma.linkedInProfile.findFirst({
+        where: {
+          AND: [
+            { id: profileId },
+            { userId }
+          ]
+        }
+      });
+
+      if (!profile) {
+        return errorResponse('LinkedIn profile not found or does not belong to this user');
+      }
+
+      // Use a transaction to ensure data consistency
+      await this.prisma.$transaction(async (prisma) => {
+        // First, set all profiles for this user to non-default
+        await prisma.linkedInProfile.updateMany({
+          where: {
+            userId,
+          },
+          data: {
+            isDefault: false,
+          },
+        });
+
+        // Then set the selected profile as default
+        await prisma.linkedInProfile.update({
+          where: {
+            id: profileId,
+          },
+          data: {
+            isDefault: true,
+          },
+        });
+      });
+
+      // Get the updated profile
+      const updatedProfile = await this.prisma.linkedInProfile.findUnique({
+        where: {
+          id: profileId,
+        },
+        select: {
+          id: true,
+          profileId: true,
+          name: true,
+          email: true,
+          avatarUrl: true,
+          isDefault: true,
+          linkedInProfileUrl: true,
+          tokenExpiringAt: true,
+        },
+      });
+
+      console.log('LinkedIn profile set as default:', {
+        profileId: updatedProfile.profileId,
+        userId,
+        isDefault: updatedProfile.isDefault,
+      });
+
+      return successResponse('LinkedIn profile set as default successfully', {
+        profile: updatedProfile,
+      });
+    } catch (error) {
+      console.log('Error setting LinkedIn profile as default:', {
+        error: error.message,
+        userId,
+        profileId,
+      });
+
+      return errorResponse(
+        `Failed to set LinkedIn profile as default: ${error.message}`,
+      );
+    }
+  }
+
 }

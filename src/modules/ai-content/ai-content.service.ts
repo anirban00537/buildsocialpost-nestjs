@@ -132,23 +132,6 @@ export class AiContentService {
         },
       });
 
-      // If no token usage exists, create it with default values
-      if (!tokenUsage) {
-        tokenUsage = await this.prisma.aIWordUsage.create({
-          data: {
-            userId,
-            totalWordLimit: 2000,
-            wordsGenerated: 0,
-            expirationTime: oneMonthFromNow,
-          },
-          select: {
-            totalWordLimit: true,
-            wordsGenerated: true,
-            expirationTime: true,
-          },
-        });
-      }
-
       const used = tokenUsage.wordsGenerated;
       const total = tokenUsage.totalWordLimit;
       const remaining = total - used;
@@ -302,7 +285,7 @@ export class AiContentService {
         where: { userId },
         data: {
           wordsGenerated: 0,
-          totalWordLimit: 2000,
+          totalWordLimit: 0,
           expirationTime: oneMonthFromNow,
         },
       });

@@ -39,7 +39,6 @@ model User {
   Files                 File[]
   AIWordUsage           AIWordUsage?
   Workspaces            Workspace[]
-
   @@index([id])
 }
 
@@ -71,6 +70,7 @@ model LinkedInProfile {
   creatorId          String
   linkedInProfileUrl String?        @db.Text
   tokenExpiringAt    DateTime
+  isDefault          Boolean        @default(false)
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   user               User           @relation(fields: [userId], references: [id])
@@ -219,15 +219,15 @@ model UserVerificationCodes {
 }
 
 model AIWordUsage {
-  id             Int      @id @default(autoincrement())
-  userId         Int      @unique
-  totalWordLimit Int      @default(0)
-  wordsGenerated Int      @default(0)
-  lastResetDate  DateTime @default(now())
+  id             Int            @id @default(autoincrement())
+  userId         Int            @unique
+  totalWordLimit Int            @default(0)
+  wordsGenerated Int            @default(0)
+  lastResetDate  DateTime       @default(now())
   expirationTime DateTime
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  user           User     @relation(fields: [userId], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  user           User           @relation(fields: [userId], references: [id])
   wordTokenLogs  WordTokenLog[]
 
   @@index([userId])
@@ -236,8 +236,8 @@ model AIWordUsage {
 model WordTokenLog {
   id            Int         @id @default(autoincrement())
   aiWordUsageId Int
-  amount        Int         // Can be positive (purchase/reset) or negative (usage)
-  type          String      // "PURCHASE" | "USAGE" | "RESET" | "EXPIRY"
+  amount        Int // Can be positive (purchase/reset) or negative (usage)
+  type          String // "PURCHASE" | "USAGE" | "RESET" | "EXPIRY"
   description   String?
   createdAt     DateTime    @default(now())
   aiWordUsage   AIWordUsage @relation(fields: [aiWordUsageId], references: [id])

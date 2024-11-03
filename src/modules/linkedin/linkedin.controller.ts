@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Get, Query, UseGuards, Req, Param, Delete } from '@nestjs/common';
 import { LinkedInService } from './linkedin.service';
 import { UserInfo } from 'src/shared/decorators/user.decorators';
 import { User } from '@prisma/client';
@@ -40,5 +40,12 @@ export class LinkedInController {
   @ApiOperation({ summary: 'Get user LinkedIn profiles' })
   async getProfiles(@UserInfo() user: User) {
     return this.linkedInService.getUserLinkedInProfiles(user.id);
+  }
+  @Delete('disconnect/:profileId')
+  async disconnectProfile(
+    @UserInfo() user: User,
+    @Param('profileId') profileId: number,
+  ) {
+    return this.linkedInService.disconnectLinkedInProfile(user.id, profileId);
   }
 }
