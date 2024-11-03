@@ -22,7 +22,6 @@ import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 
 @Controller('user')
 export class UserController {
-
   constructor(private readonly userService: UsersService) {}
   @UseGuards(JwtAuthGuard)
   @Get('profile')

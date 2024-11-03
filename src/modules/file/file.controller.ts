@@ -13,7 +13,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { FileService } from './file.service';
 import { multerUploadConfig } from '../../shared/configs/multer-upload.config';
 import { UserInfo } from 'src/shared/decorators/user.decorators';
-import { User } from '../users/entities/user.entity';
+import { User } from '@prisma/client';
 import { ResponseModel } from 'src/shared/models/response.model';
 import { memoryStorage } from 'multer';
 

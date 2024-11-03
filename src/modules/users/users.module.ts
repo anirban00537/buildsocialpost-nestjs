@@ -12,4 +12,3 @@ import { NotificationService } from 'src/shared/notification/notification.servic
   exports: [UsersService],
 })
 export class UsersModule {}
-

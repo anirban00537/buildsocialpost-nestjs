@@ -3,11 +3,15 @@ import { HttpModule } from '@nestjs/axios';
 import { FileService } from './file.service';
 import { FileController } from './file.controller';
 import { PrismaModule } from '../prisma/prisma.module';
-import { SubscriptionService } from '../subscription/subscription.service';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
-  imports: [PrismaModule, HttpModule],
+  imports: [
+    PrismaModule,
+    HttpModule,
+    SubscriptionModule,
+  ],
   controllers: [FileController],
-  providers: [FileService, SubscriptionService],
+  providers: [FileService],
 })
 export class FileModule {}

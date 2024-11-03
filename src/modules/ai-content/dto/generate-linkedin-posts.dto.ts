@@ -1,6 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsInt, IsOptional, Min, Max, IsIn } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsString, IsOptional } from 'class-validator';
 
 export class GenerateLinkedInPostsDto {
   @IsString()

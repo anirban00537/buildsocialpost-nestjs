@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { uploadFile, deleteFileFromS3 } from '../../shared/configs/multer-upload.config';
-import { User } from '../users/entities/user.entity';
 import { ResponseModel } from 'src/shared/models/response.model';
 import { errorResponse, successResponse } from 'src/shared/helpers/functions';
 import {
@@ -14,6 +13,7 @@ import * as fs from 'fs/promises';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { coreConstant } from 'src/shared/helpers/coreConstant';
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class FileService {

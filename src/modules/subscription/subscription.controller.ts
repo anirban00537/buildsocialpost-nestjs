@@ -1,14 +1,15 @@
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 import { UserInfo } from 'src/shared/decorators/user.decorators';
-import { User } from '../users/entities/user.entity';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/guards/roles.guard';
 import { IsAdmin } from 'src/shared/decorators/is-admin.decorator';
+import { User } from '@prisma/client';
 
 @Controller('subscription')
 export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
+
   @UseGuards(JwtAuthGuard)
   @Get('check-subscription')
   async checkSubscription(@UserInfo() user: User) {
