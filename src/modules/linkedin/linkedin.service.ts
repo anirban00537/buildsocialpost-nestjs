@@ -363,18 +363,16 @@ export class LinkedInService {
     profileId: number,
   ): Promise<ResponseModel> {
     try {
-      // First check if the profile exists and belongs to the user
       const profile = await this.prisma.linkedInProfile.findFirst({
         where: {
-          AND: [
-            { id: profileId },
-            { userId }
-          ]
-        }
+          AND: [{ id: profileId }, { userId }],
+        },
       });
 
       if (!profile) {
-        return errorResponse('LinkedIn profile not found or does not belong to this user');
+        return errorResponse(
+          'LinkedIn profile not found or does not belong to this user',
+        );
       }
 
       // Use a transaction to ensure data consistency
@@ -438,5 +436,4 @@ export class LinkedInService {
       );
     }
   }
-
 }
