@@ -91,6 +91,7 @@ export class SubscriptionWebhookController {
     console.log('Full webhook event:', JSON.stringify(evt, null, 2));
 
     try {
+      console.log('user_id:', evt.meta.custom_data.user_id);
       const customData = evt.meta.custom_data || {};
       console.log('Custom data:', customData);
 
@@ -160,18 +161,6 @@ export class SubscriptionWebhookController {
       console.log('Final subscription data:', subscriptionData);
       await this.subscriptionService.createSubscription(subscriptionData);
       console.log('Subscription created successfully');
-      
-      const plan_id = determinedPlanId;
-      const plan = PRICING_PLANS.find((p) => p.id === plan_id);
-      const aiWordsPerMonth = plan?.limits.aiWordsPerMonth || 0;
-      
-      // Use the reusable function
-      await this.subscriptionService.updateWordUsageLimit({
-        userId: Number(userId),
-        newWordLimit: aiWordsPerMonth,
-        expirationTime: endDate,
-      });
-
     } catch (error) {
       console.error('=== Error in handleOrderCreated ===');
       console.error('Error message:', error.message);

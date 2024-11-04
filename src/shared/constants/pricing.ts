@@ -41,7 +41,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       imageUploads: 5,
       workspaces: 1,
       linkedInProfiles: 1,
-      carousels: 10
+      carousels: 10,
     },
     features: {
       scheduling: true,
@@ -50,7 +50,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       bulkUpload: false,
       prioritySupport: false,
       aiAssistant: true,
-      teamCollaboration: false
+      teamCollaboration: false,
     },
     featureTexts: [
       '10,000 AI words per month',
@@ -62,12 +62,12 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Basic post scheduling',
       'Basic AI assistant',
       'Standard support',
-      'Single user'
+      'Single user',
     ],
     variants: {
-      monthly: '525061',
-      yearly: '525062'
-    }
+      monthly: '525068',
+      yearly: '525061',
+    },
   },
   {
     id: 'pro',
@@ -80,7 +80,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       imageUploads: -1, // Unlimited
       workspaces: -1, // Unlimited
       linkedInProfiles: -1, // Unlimited
-      carousels: -1 // Unlimited
+      carousels: -1, // Unlimited
     },
     features: {
       scheduling: true,
@@ -89,7 +89,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       bulkUpload: true,
       prioritySupport: true,
       aiAssistant: true,
-      teamCollaboration: true
+      teamCollaboration: true,
     },
     featureTexts: [
       '50,000 AI words per month',
@@ -104,29 +104,30 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Bulk upload capability',
       'Priority support',
       'Advanced AI assistant',
-      'Team collaboration tools'
+      'Team collaboration tools',
     ],
     variants: {
       monthly: '585057',
-      yearly: '585058'
-    }
-  }
+      yearly: '585058',
+    },
+  },
 ];
 
 export const getPlanByVariantId = (variantId: string): PlanId | null => {
   const plan = PRICING_PLANS.find(
-    (plan) => plan.variants.monthly === variantId || plan.variants.yearly === variantId
+    (plan) =>
+      plan.variants.monthly === variantId || plan.variants.yearly === variantId,
   );
   return plan?.id || null;
 };
 
 export const getVariantId = (planId: PlanId): string | null => {
-  const plan = PRICING_PLANS.find(p => p.id === planId);
+  const plan = PRICING_PLANS.find((p) => p.id === planId);
   return plan?.variants.monthly || null;
 };
 
 export const getPlanById = (planId: PlanId): PricingPlan | null => {
-  return PRICING_PLANS.find(p => p.id === planId) || null;
+  return PRICING_PLANS.find((p) => p.id === planId) || null;
 };
 
 export const isUnlimited = (limit: number): boolean => limit === -1;
