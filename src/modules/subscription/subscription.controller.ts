@@ -1,8 +1,6 @@
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 import { UserInfo } from 'src/shared/decorators/user.decorators';
-import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/shared/guards/roles.guard';
 import { IsAdmin } from 'src/shared/decorators/is-admin.decorator';
 import { User } from '@prisma/client';
 
@@ -10,14 +8,12 @@ import { User } from '@prisma/client';
 export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
 
-  @UseGuards(JwtAuthGuard)
   @Get('check-subscription')
   async checkSubscription(@UserInfo() user: User) {
-    return this.subscriptionService.checkSubscription(user);
+    return this.subscriptionService.checkSubscriptionResponse(user);
   }
 
   @Post('create-checkout')
-  @UseGuards(JwtAuthGuard)
   async createCheckout(
     @UserInfo() user: User,
     @Body() body: { variantId: string; redirectUrl: string },
@@ -31,7 +27,6 @@ export class SubscriptionController {
   }
 
   @Post('give-subscription')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @IsAdmin()
   async giveSubscription(
     @Body() body: { email: string; durationInMonths: number },
@@ -42,7 +37,6 @@ export class SubscriptionController {
     );
   }
   @Get('get-all-subscriptions')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @IsAdmin()
   async getAllSubscriptions() {
     return this.subscriptionService.getAllSubscriptions();

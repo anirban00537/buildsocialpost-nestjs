@@ -5,7 +5,7 @@ import {
   createParamDecorator,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { webhookHasData, webhookHasMeta } from './subscription-webhook.utils';
+import { webhookHasData, webhookHasMeta } from '../subscription-webhook.utils';
 
 export const LemonSqueezyRequest = createParamDecorator(
   async (data: unknown, ctx: ExecutionContext) => {

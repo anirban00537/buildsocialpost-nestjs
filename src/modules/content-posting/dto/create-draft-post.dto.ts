@@ -4,7 +4,7 @@ export enum PostType {
   TEXT = 'text',
   IMAGE = 'image',
   VIDEO = 'video',
-  DOCUMENT = 'document'
+  DOCUMENT = 'document',
 }
 
 export class CreateOrUpdateDraftPostDto {
@@ -21,8 +21,9 @@ export class CreateOrUpdateDraftPostDto {
   @IsInt()
   workspaceId: number;
 
+  @IsOptional()
   @IsInt()
-  linkedInProfileId: number;
+  linkedInProfileId?: number;
 
   @IsOptional()
   @IsArray()
@@ -51,4 +52,4 @@ export class CreateOrUpdateDraftPostDto {
   @IsOptional()
   @IsString()
   videoTitle?: string;
-} 
+}

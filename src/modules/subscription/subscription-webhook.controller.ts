@@ -8,8 +8,9 @@ import {
 import { Public } from 'src/shared/decorators/public.decorator';
 import { ConfigService } from '@nestjs/config';
 import { SubscriptionService } from './subscription.service';
-import { LemonSqueezyRequest } from './lemon-squeezy-request.decorator';
-import { PlanId } from 'src/shared/constants/pricing';
+import { LemonSqueezyRequest } from './dto/lemon-squeezy-request.decorator';
+import { PlanId, PRICING_PLANS } from 'src/shared/constants/pricing';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('subscription/webhook')
 export class SubscriptionWebhookController {
@@ -17,7 +18,7 @@ export class SubscriptionWebhookController {
 
   constructor(
     private readonly subscriptionService: SubscriptionService,
-    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Public()
@@ -56,7 +57,7 @@ export class SubscriptionWebhookController {
   private getPlanFromVariant(variantName: string): PlanId {
     console.log('=== getPlanFromVariant ===');
     console.log('Input variantName:', variantName);
-    
+
     if (!variantName) {
       console.log('Variant name is empty or undefined');
       throw new Error('Invalid variant name: empty or undefined');
@@ -88,7 +89,7 @@ export class SubscriptionWebhookController {
   private async handleOrderCreated(evt: any) {
     console.log('=== handleOrderCreated ===');
     console.log('Full webhook event:', JSON.stringify(evt, null, 2));
-    
+
     try {
       const customData = evt.meta.custom_data || {};
       console.log('Custom data:', customData);
@@ -159,6 +160,18 @@ export class SubscriptionWebhookController {
       console.log('Final subscription data:', subscriptionData);
       await this.subscriptionService.createSubscription(subscriptionData);
       console.log('Subscription created successfully');
+      
+      const plan_id = determinedPlanId;
+      const plan = PRICING_PLANS.find((p) => p.id === plan_id);
+      const aiWordsPerMonth = plan?.limits.aiWordsPerMonth || 0;
+      
+      // Use the reusable function
+      await this.subscriptionService.updateWordUsageLimit({
+        userId: Number(userId),
+        newWordLimit: aiWordsPerMonth,
+        expirationTime: endDate,
+      });
+
     } catch (error) {
       console.error('=== Error in handleOrderCreated ===');
       console.error('Error message:', error.message);
@@ -167,7 +180,7 @@ export class SubscriptionWebhookController {
       this.logger.error('Error handling order created:', {
         message: error.message,
         stack: error.stack,
-        eventData: evt
+        eventData: evt,
       });
       throw error;
     }

@@ -127,27 +127,22 @@ export class AiContentService {
         where: { userId },
         select: {
           totalWordLimit: true,
-          wordsGenerated: true,
           expirationTime: true,
         },
       });
 
-      const used = tokenUsage.wordsGenerated;
       const total = tokenUsage.totalWordLimit;
-      const remaining = total - used;
       const isActive = tokenUsage.expirationTime > now;
 
       return successResponse('Token usage data', {
         usage: {
-          used,
-          remaining,
           total,
           isActive,
           expirationDate: tokenUsage.expirationTime,
         },
         percentage: {
-          used: Math.round((used / total) * 100) || 0,
-          remaining: Math.round((remaining / total) * 100) || 0,
+          used: Math.round((0 / total) * 100) || 0,
+          remaining: Math.round((total / total) * 100) || 0,
         },
       });
     } catch (error) {
@@ -284,7 +279,6 @@ export class AiContentService {
       await this.prisma.aIWordUsage.update({
         where: { userId },
         data: {
-          wordsGenerated: 0,
           totalWordLimit: 0,
           expirationTime: oneMonthFromNow,
         },

@@ -18,6 +18,7 @@ import {
 import { successResponse, errorResponse } from 'src/shared/helpers/functions';
 import { ResponseModel } from 'src/shared/models/response.model';
 import axios from 'axios';
+import { WordLimitUpdate } from './types/subscription';
 
 @Injectable()
 export class SubscriptionService {
@@ -75,6 +76,23 @@ export class SubscriptionService {
     }
   }
 
+  async checkSubscriptionResponse(user: User) {
+    try {
+      const subscriptionStatus = await this.checkSubscription(user);
+      const plan_id = subscriptionStatus.plan;
+      const plan = PRICING_PLANS.find((p) => p.id === plan_id);
+      const limits = plan?.limits;
+
+      return successResponse('Subscription checked successfully', {
+        ...subscriptionStatus,
+        limits,
+      });
+    } catch (error) {
+      this.logger.error('Error checking subscription:', error);
+      return errorResponse(`Failed to check subscription: ${error.message}`);
+    }
+  }
+
   async createCheckout(user: User, variantId: string, redirectUrl: string) {
     let planId: PlanId | null = null;
     let plan: any = null;
@@ -102,30 +120,30 @@ export class SubscriptionService {
             checkout_data: {
               custom: {
                 user_id: user.id.toString(),
-                plan_id: planId
-              }
+                plan_id: planId,
+              },
             },
             product_options: {
               redirect_url: redirectUrl,
               receipt_button_text: 'Return to Dashboard',
-              receipt_link_url: redirectUrl
-            }
+              receipt_link_url: redirectUrl,
+            },
           },
           relationships: {
             store: {
               data: {
                 type: 'stores',
-                id: this.storeId
-              }
+                id: this.storeId,
+              },
             },
             variant: {
               data: {
                 type: 'variants',
-                id: variantId
-              }
-            }
-          }
-        }
+                id: variantId,
+              },
+            },
+          },
+        },
       };
 
       this.logger.debug('Creating checkout with payload:', payload);
@@ -135,11 +153,11 @@ export class SubscriptionService {
         payload,
         {
           headers: {
-            'Accept': 'application/vnd.api+json',
+            Accept: 'application/vnd.api+json',
             'Content-Type': 'application/vnd.api+json',
-            'Authorization': `Bearer ${this.apiKey}`,
+            Authorization: `Bearer ${this.apiKey}`,
           },
-        }
+        },
       );
 
       this.logger.debug('Checkout created successfully');
@@ -148,7 +166,7 @@ export class SubscriptionService {
       console.log('Request Payload:', {
         storeId: this.storeId,
         variantId,
-        userId: user.id
+        userId: user.id,
       });
 
       if (error.response) {
@@ -157,15 +175,16 @@ export class SubscriptionService {
         console.log('Error Response Headers:', error.response.headers);
       }
 
-      this.logger.error('Error creating checkout:', error.response?.data || error);
+      this.logger.error(
+        'Error creating checkout:',
+        error.response?.data || error,
+      );
       throw new HttpException(
         `Failed to create checkout: ${error.response?.data?.errors?.[0]?.detail || error.message}`,
-        HttpStatus.BAD_REQUEST
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
-
-
 
   async createSubscription(data: {
     userId: number;
@@ -184,7 +203,7 @@ export class SubscriptionService {
       this.logger.debug('Creating subscription with data:', data);
 
       // Validate planId
-      const plan = PRICING_PLANS.find(p => p.id === data.planId);
+      const plan = PRICING_PLANS.find((p) => p.id === data.planId);
       if (!plan) {
         throw new Error(`Invalid plan variant: ${data.planId}`);
       }
@@ -415,6 +434,69 @@ export class SubscriptionService {
     } catch (error) {
       this.logger.error(`Error getting word usage data: ${error.message}`);
       return null;
+    }
+  }
+
+  async updateWordUsageLimit({
+    userId,
+    newWordLimit,
+    expirationTime,
+  }: WordLimitUpdate) {
+    try {
+      this.logger.debug('Updating word usage limit:', {
+        userId,
+        newWordLimit,
+        expirationTime,
+      });
+
+      const existingAIWordUsage = await this.prisma.aIWordUsage.findUnique({
+        where: { userId },
+      });
+
+      let finalWordLimit = newWordLimit;
+      const now = new Date();
+
+      // Check if user has existing words and valid expiration
+      if (existingAIWordUsage) {
+        const currentExpirationTime = new Date(
+          existingAIWordUsage.expirationTime,
+        );
+
+        // If expiration is in the future, add existing limit to new limit
+        if (currentExpirationTime > now) {
+          this.logger.debug('Accumulating word limit:', {
+            existing: existingAIWordUsage.totalWordLimit,
+            new: newWordLimit,
+          });
+
+          finalWordLimit += existingAIWordUsage.totalWordLimit;
+        }
+      }
+
+      // Update or create AIWordUsage with accumulated limit
+      const updatedUsage = await this.prisma.aIWordUsage.upsert({
+        where: { userId },
+        update: {
+          totalWordLimit: finalWordLimit,
+          expirationTime,
+          // Only reset wordsGenerated if previous subscription expired
+          ...(!existingAIWordUsage || existingAIWordUsage.expirationTime < now
+            ? { wordsGenerated: 0 }
+            : {}),
+        },
+        create: {
+          userId,
+          totalWordLimit: finalWordLimit,
+          wordsGenerated: 0,
+          expirationTime,
+        },
+      });
+
+      this.logger.debug('Word usage limit updated:', updatedUsage);
+      return updatedUsage;
+    } catch (error) {
+      this.logger.error('Error updating word usage limit:', error);
+      throw new Error(`Failed to update word usage limit: ${error.message}`);
     }
   }
 }

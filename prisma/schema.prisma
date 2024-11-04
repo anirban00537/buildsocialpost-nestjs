@@ -39,6 +39,7 @@ model User {
   Files                 File[]
   AIWordUsage           AIWordUsage?
   Workspaces            Workspace[]
+
   @@index([id])
 }
 
@@ -80,22 +81,22 @@ model LinkedInProfile {
 }
 
 model LinkedInPost {
-  id                  Int             @id @default(autoincrement())
-  content             String          @db.Text
-  visibility          String          @default("public")
-  postType            String          @default("text")
-  imageUrls           String[]        @default([])
+  id                  Int              @id @default(autoincrement())
+  content             String           @db.Text
+  visibility          String           @default("public")
+  postType            String           @default("text")
+  imageUrls           String[]         @default([])
   videoUrl            String?
   documentUrl         String?
-  hashtags            String[]        @default([])
+  hashtags            String[]         @default([])
   scheduledTime       DateTime?
-  status              Int             @default(0) // 0: draft, 1: scheduled, 2: posted
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
+  status              Int              @default(0) // 0: draft, 1: scheduled, 2: posted
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
   publishedAt         DateTime?
   publishedId         String?
   linkedInApiResponse Json?
-  mentions            String[]        @default([])
+  mentions            String[]         @default([])
   fileUrl             String?
   publishingError     String?
   carouselTitle       String?
@@ -103,10 +104,10 @@ model LinkedInPost {
   publishingErrorCode String?
   userId              Int
   workspaceId         Int
-  linkedInProfileId   Int
-  linkedInProfile     LinkedInProfile @relation(fields: [linkedInProfileId], references: [id])
-  user                User            @relation(fields: [userId], references: [id])
-  workspace           Workspace       @relation(fields: [workspaceId], references: [id])
+  linkedInProfileId   Int?
+  linkedInProfile     LinkedInProfile? @relation(fields: [linkedInProfileId], references: [id])
+  user                User             @relation(fields: [userId], references: [id])
+  workspace           Workspace        @relation(fields: [workspaceId], references: [id])
   postLogs            PostLog[]
 
   @@index([userId])
