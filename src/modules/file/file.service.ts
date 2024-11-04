@@ -37,8 +37,8 @@ export class FileService {
     user: User,
   ): Promise<ResponseModel> {
     try {
-      const isSubscribed = await this.subscriptionService.isSubscribed(user);
-      if (!isSubscribed) {
+      const isSubscribed = await this.subscriptionService.checkSubscription(user);
+      if (!isSubscribed.isSubscribed) {
         return errorResponse(
           'User is not subscribed, please subscribe to upload images',
         );

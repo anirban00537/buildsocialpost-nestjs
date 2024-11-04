@@ -1,23 +1,384 @@
-import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { User } from '@prisma/client';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ResponseModel } from 'src/shared/models/response.model';
-import { errorResponse, successResponse } from 'src/shared/helpers/functions';
-import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { lastValueFrom } from 'rxjs';
-import { coreConstant } from 'src/shared/helpers/coreConstant';
+import { User } from '@prisma/client';
+import {
+  PRICING_PLANS,
+  PlanId,
+  getVariantId,
+  getPlanByVariantId,
+  getPlanById,
+} from 'src/shared/constants/pricing';
+import { successResponse, errorResponse } from 'src/shared/helpers/functions';
+import { ResponseModel } from 'src/shared/models/response.model';
+import axios from 'axios';
 
 @Injectable()
 export class SubscriptionService {
   private readonly logger = new Logger(SubscriptionService.name);
+  private readonly apiKey: string;
+  private readonly storeId: string;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly httpService: HttpService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    this.apiKey = this.configService.get<string>('LEMONSQUEEZY_API_KEY');
+    this.storeId = this.configService.get<string>('LEMONSQUEEZY_STORE_ID');
 
+    if (!this.apiKey) {
+      this.logger.error('LEMONSQUEEZY_API_KEY is not configured');
+    }
+    if (!this.storeId) {
+      this.logger.error('LEMONSQUEEZY_STORE_ID is not configured');
+    }
+  }
+
+  async checkSubscription(user: User) {
+    try {
+      const subscription = await this.prisma.subscription.findUnique({
+        where: { userId: user.id },
+      });
+
+      if (!subscription) {
+        return {
+          isSubscribed: false,
+          plan: null,
+          expiresAt: null,
+        };
+      }
+
+      const now = new Date();
+      const isActive =
+        subscription.status === 'active' && subscription.endDate > now;
+
+      return {
+        isSubscribed: isActive,
+        plan: isActive ? subscription.planId : null,
+        expiresAt: subscription.endDate,
+        subscription: {
+          status: subscription.status,
+          productName: subscription.productName,
+          variantName: subscription.variantName,
+        },
+      };
+    } catch (error) {
+      this.logger.error('Error checking subscription:', error);
+      console.log(error, 'error');
+      throw error;
+    }
+  }
+
+  async createCheckout(user: User, variantId: string, redirectUrl: string) {
+    let planId: PlanId | null = null;
+    let plan: any = null;
+
+    try {
+      if (!this.apiKey) {
+        throw new Error('Lemon Squeezy API key is not configured');
+      }
+
+      const tempPlanId = getPlanByVariantId(variantId);
+      if (!tempPlanId || !['starter', 'pro'].includes(tempPlanId)) {
+        throw new Error('Invalid variant ID');
+      }
+      planId = tempPlanId as PlanId;
+
+      plan = getPlanById(planId);
+      if (!plan) {
+        throw new Error('Invalid plan');
+      }
+
+      const payload = {
+        data: {
+          type: 'checkouts',
+          attributes: {
+            checkout_data: {
+              custom: {
+                user_id: user.id.toString(),
+                plan_id: planId
+              }
+            },
+            product_options: {
+              redirect_url: redirectUrl,
+              receipt_button_text: 'Return to Dashboard',
+              receipt_link_url: redirectUrl
+            }
+          },
+          relationships: {
+            store: {
+              data: {
+                type: 'stores',
+                id: this.storeId
+              }
+            },
+            variant: {
+              data: {
+                type: 'variants',
+                id: variantId
+              }
+            }
+          }
+        }
+      };
+
+      this.logger.debug('Creating checkout with payload:', payload);
+
+      const checkoutResponse = await axios.post(
+        'https://api.lemonsqueezy.com/v1/checkouts',
+        payload,
+        {
+          headers: {
+            'Accept': 'application/vnd.api+json',
+            'Content-Type': 'application/vnd.api+json',
+            'Authorization': `Bearer ${this.apiKey}`,
+          },
+        }
+      );
+
+      this.logger.debug('Checkout created successfully');
+      return checkoutResponse.data.data.attributes.url;
+    } catch (error) {
+      console.log('Request Payload:', {
+        storeId: this.storeId,
+        variantId,
+        userId: user.id
+      });
+
+      if (error.response) {
+        console.log('Error Response Data:', error.response.data);
+        console.log('Error Response Status:', error.response.status);
+        console.log('Error Response Headers:', error.response.headers);
+      }
+
+      this.logger.error('Error creating checkout:', error.response?.data || error);
+      throw new HttpException(
+        `Failed to create checkout: ${error.response?.data?.errors?.[0]?.detail || error.message}`,
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+
+
+  async createSubscription(data: {
+    userId: number;
+    orderId: string;
+    status: string;
+    planId: PlanId;
+    endDate: Date;
+    createdAt: Date;
+    productName: string;
+    variantName: string;
+    subscriptionLengthInMonths: number;
+    totalAmount: number;
+    currency: string;
+  }) {
+    try {
+      this.logger.debug('Creating subscription with data:', data);
+
+      // Validate planId
+      const plan = PRICING_PLANS.find(p => p.id === data.planId);
+      if (!plan) {
+        throw new Error(`Invalid plan variant: ${data.planId}`);
+      }
+
+      // Create the subscription
+      const subscription = await this.prisma.subscription.create({
+        data: {
+          userId: data.userId,
+          orderId: data.orderId,
+          status: data.status,
+          planId: data.planId,
+          endDate: data.endDate,
+          createdAt: data.createdAt,
+          productName: data.productName,
+          variantName: data.variantName,
+          subscriptionLengthInMonths: data.subscriptionLengthInMonths,
+          totalAmount: data.totalAmount,
+          currency: data.currency,
+        },
+      });
+
+      // Update user's word usage limits based on the plan
+      await this.prisma.aIWordUsage.upsert({
+        where: { userId: data.userId },
+        create: {
+          userId: data.userId,
+          totalWordLimit: plan.limits.aiWordsPerMonth,
+          wordsGenerated: 0,
+          expirationTime: data.endDate,
+        },
+        update: {
+          totalWordLimit: plan.limits.aiWordsPerMonth,
+          expirationTime: data.endDate,
+        },
+      });
+
+      this.logger.debug('Subscription created successfully:', subscription);
+      return subscription;
+    } catch (error) {
+      this.logger.error('Error creating subscription:', error);
+      throw error;
+    }
+  }
+
+  async giveSubscription(
+    email: string,
+    durationInMonths: number,
+  ): Promise<ResponseModel> {
+    try {
+      // Find the user
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user) {
+        return errorResponse('User not found');
+      }
+
+      const now = new Date();
+      const endDate = new Date(now);
+      endDate.setMonth(endDate.getMonth() + durationInMonths);
+
+      // Create or update subscription
+      const subscription = await this.prisma.subscription.upsert({
+        where: { userId: user.id },
+        create: {
+          userId: user.id,
+          orderId: `ADMIN_GIVEN_${Date.now()}`,
+          status: 'active',
+          planId: 'pro',
+          endDate,
+          productName: 'Pro Plan',
+          variantName: 'Pro Monthly',
+          subscriptionLengthInMonths: durationInMonths,
+          totalAmount: 0, // Free subscription
+          currency: 'USD',
+        },
+        update: {
+          status: 'active',
+          planId: 'pro',
+          endDate,
+          subscriptionLengthInMonths: durationInMonths,
+        },
+      });
+
+      // Initialize or update AI word usage
+      await this.prisma.aIWordUsage.upsert({
+        where: { userId: user.id },
+        create: {
+          userId: user.id,
+          totalWordLimit:
+            PRICING_PLANS.find((p) => p.id === 'pro')?.limits.aiWordsPerMonth ||
+            0,
+          wordsGenerated: 0,
+          expirationTime: endDate,
+        },
+        update: {
+          totalWordLimit:
+            PRICING_PLANS.find((p) => p.id === 'pro')?.limits.aiWordsPerMonth ||
+            0,
+          expirationTime: endDate,
+        },
+      });
+
+      this.logger.log(
+        `Admin gave subscription to user ${user.email} for ${durationInMonths} months`,
+      );
+
+      return successResponse('Subscription given successfully', {
+        subscription,
+        user: {
+          id: user.id,
+          email: user.email,
+        },
+      });
+    } catch (error) {
+      this.logger.error('Error giving subscription:', error);
+      return errorResponse(`Failed to give subscription: ${error.message}`);
+    }
+  }
+
+  async getAllSubscriptions(): Promise<ResponseModel> {
+    try {
+      const subscriptions = await this.prisma.subscription.findMany({
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              first_name: true,
+              last_name: true,
+              user_name: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      const formattedSubscriptions = subscriptions.map((sub) => ({
+        id: sub.id,
+        status: sub.status,
+        endDate: sub.endDate,
+        createdAt: sub.createdAt,
+        productName: sub.productName,
+        variantName: sub.variantName,
+        subscriptionLengthInMonths: sub.subscriptionLengthInMonths,
+        totalAmount: sub.totalAmount,
+        currency: sub.currency,
+        user: sub.user,
+        isActive: sub.status === 'active' && sub.endDate > new Date(),
+        daysRemaining: Math.ceil(
+          (sub.endDate.getTime() - new Date().getTime()) /
+            (1000 * 60 * 60 * 24),
+        ),
+      }));
+
+      return successResponse('Subscriptions retrieved successfully', {
+        subscriptions: formattedSubscriptions,
+        total: formattedSubscriptions.length,
+        activeSubscriptions: formattedSubscriptions.filter((s) => s.isActive)
+          .length,
+      });
+    } catch (error) {
+      this.logger.error('Error getting all subscriptions:', error);
+      return errorResponse(`Failed to get subscriptions: ${error.message}`);
+    }
+  }
+
+  // Helper method to cancel a subscription (if needed)
+  async cancelSubscription(userId: number): Promise<ResponseModel> {
+    try {
+      const subscription = await this.prisma.subscription.findUnique({
+        where: { userId },
+      });
+
+      if (!subscription) {
+        return errorResponse('No active subscription found');
+      }
+
+      await this.prisma.subscription.update({
+        where: { userId },
+        data: {
+          status: 'cancelled',
+        },
+      });
+
+      return successResponse('Subscription cancelled successfully');
+    } catch (error) {
+      this.logger.error('Error cancelling subscription:', error);
+      return errorResponse(`Failed to cancel subscription: ${error.message}`);
+    }
+  }
   private async getWordUsageData(userId: number): Promise<any> {
     try {
       const now = new Date();
@@ -55,276 +416,5 @@ export class SubscriptionService {
       this.logger.error(`Error getting word usage data: ${error.message}`);
       return null;
     }
-  }
-
-  async checkSubscription(user: User): Promise<ResponseModel> {
-    try {
-      // Get subscription data
-      const subscription = await this.prisma.subscription.findFirst({
-        where: {
-          userId: user.id,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-
-      const now = new Date();
-
-      // Process subscription status
-      let subscriptionData;
-      if (!subscription) {
-        subscriptionData = {
-          isSubscribed: false,
-          subscription: null,
-          daysLeft: null,
-        };
-      } else {
-        const endDate = new Date(subscription.endDate);
-        const isActive = subscription.status === 'active' && endDate > now;
-
-        if (isActive) {
-          const daysLeft = Math.ceil(
-            (endDate.getTime() - now.getTime()) / (1000 * 3600 * 24),
-          );
-          subscriptionData = { isSubscribed: true, subscription, daysLeft };
-        } else {
-          await this.prisma.subscription.update({
-            where: { id: subscription.id },
-            data: { status: coreConstant.SUBSCRIPTION_STATUS_EXPIRED },
-          });
-          subscriptionData = { isSubscribed: false, subscription, daysLeft: 0 };
-        }
-      }
-
-      // Get word usage data
-      const wordUsageData = await this.getWordUsageData(user.id);
-
-      return successResponse(
-        'Subscription and usage status retrieved successfully',
-        {
-          subscription: subscriptionData,
-          wordUsage: wordUsageData,
-        },
-      );
-    } catch (error) {
-      console.error('Error in checkSubscription:', error);
-      return errorResponse('Error retrieving subscription and usage status');
-    }
-  }
-
-  async isSubscribed(user: User): Promise<boolean> {
-    try {
-      const subscription = await this.prisma.subscription.findFirst({
-        where: {
-          userId: user.id,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-      if (!subscription) {
-        return false;
-      }
-      const now = new Date();
-      const endDate = new Date(subscription.endDate);
-      const isActive =
-        subscription.status === coreConstant.SUBSCRIPTION_STATUS_ACTIVE &&
-        endDate > now;
-      return isActive;
-    } catch (error) {
-      return false;
-    }
-  }
-
-  async getActiveSubscribers(): Promise<number> {
-    const now = new Date();
-    const activeSubscribers = await this.prisma.subscription.count({
-      where: {
-        status: coreConstant.SUBSCRIPTION_STATUS_ACTIVE,
-        endDate: {
-          gt: now,
-        },
-      },
-    });
-    return activeSubscribers;
-  }
-
-  async updateSubscriptionStatus(): Promise<void> {
-    const now = new Date();
-    await this.prisma.subscription.updateMany({
-      where: {
-        status: coreConstant.SUBSCRIPTION_STATUS_ACTIVE,
-        endDate: {
-          lte: now,
-        },
-      },
-      data: {
-        status: coreConstant.SUBSCRIPTION_STATUS_EXPIRED,
-      },
-    });
-  }
-
-  async createSubscription(subscriptionData: {
-    userId: number;
-    orderId: string;
-    status: string;
-    endDate: Date;
-    createdAt: Date;
-    productName: string;
-    variantName: string;
-    subscriptionLengthInMonths: number;
-    totalAmount: number;
-    currency: string;
-  }): Promise<void> {
-    console.log('Creating subscription with data:', subscriptionData);
-
-    try {
-      const result = await this.prisma.subscription.create({
-        data: subscriptionData,
-      });
-      console.log('Subscription created successfully:', result);
-
-      await this.prisma.user.update({
-        where: { id: subscriptionData.userId },
-        data: { is_subscribed: 1 },
-      });
-      console.log('User subscription status updated');
-    } catch (error) {
-      console.error('Error creating subscription:', error);
-      throw error;
-    }
-  }
-
-  async createCheckout(
-    user: User,
-    productId: string,
-    redirectUrl: string,
-  ): Promise<string> {
-    const dbUser = await this.prisma.user.findUnique({
-      where: { id: user.id },
-    });
-
-    if (!dbUser) {
-      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-    }
-
-    try {
-      const response = await lastValueFrom(
-        this.httpService.post(
-          'https://api.lemonsqueezy.com/v1/checkouts',
-          {
-            data: {
-              type: 'checkouts',
-              attributes: {
-                checkout_data: {
-                  custom: {
-                    user_id: dbUser.id.toString(),
-                  },
-                },
-                product_options: {
-                  redirect_url: redirectUrl,
-                },
-              },
-              relationships: {
-                store: {
-                  data: {
-                    type: 'stores',
-                    id: this.configService.get('LEMONSQUEEZY_STORE_ID'),
-                  },
-                },
-                variant: {
-                  data: {
-                    type: 'variants',
-                    id: productId,
-                  },
-                },
-              },
-            },
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${this.configService.get('LEMONSQUEEZY_API_KEY')}`,
-              Accept: 'application/vnd.api+json',
-              'Content-Type': 'application/vnd.api+json',
-            },
-          },
-        ),
-      );
-
-      return response.data.data.attributes.url;
-    } catch (error) {
-      console.error(
-        'Error creating checkout:',
-        error.response?.data || error.message,
-      );
-      throw new HttpException(
-        'Failed to create checkout',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  async giveSubscription(
-    email: string,
-    durationInMonths: number,
-  ): Promise<ResponseModel> {
-    try {
-      const user = await this.prisma.user.findUnique({ where: { email } });
-      if (!user) {
-        return errorResponse('User not found');
-      }
-
-      const now = new Date();
-      const endDate = new Date(now.setMonth(now.getMonth() + durationInMonths));
-
-      const subscription = await this.prisma.subscription.upsert({
-        where: { userId: user.id },
-        update: {
-          status: coreConstant.SUBSCRIPTION_STATUS_ACTIVE,
-          endDate,
-          subscriptionLengthInMonths: durationInMonths,
-          updatedAt: new Date(),
-        },
-        create: {
-          userId: user.id,
-          orderId: `COMP-${Date.now()}`,
-          status: coreConstant.SUBSCRIPTION_STATUS_ACTIVE,
-          endDate,
-          productName: 'Complimentary Subscription',
-          variantName: `${durationInMonths} Month(s)`,
-          subscriptionLengthInMonths: durationInMonths,
-          totalAmount: 0,
-          currency: 'USD',
-        },
-      });
-
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { is_subscribed: 1 },
-      });
-
-      return successResponse('Subscription given successfully', {
-        subscription,
-      });
-    } catch (error) {
-      console.error('Error giving subscription:', error);
-      return errorResponse('Failed to give subscription');
-    }
-  }
-
-  async getAllSubscriptions(): Promise<ResponseModel> {
-    const subscriptions = await this.prisma.subscription.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        user: true,
-      },
-    });
-    return successResponse(
-      'All subscriptions retrieved successfully',
-      subscriptions,
-    );
   }
 }

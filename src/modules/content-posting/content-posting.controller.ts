@@ -12,14 +12,14 @@ import { CreateOrUpdateDraftPostDto } from './dto/create-draft-post.dto';
 import { GetPostsQueryDto } from './dto/get-posts.query.dto';
 import { UserInfo } from 'src/shared/decorators/user.decorators';
 import { User } from '@prisma/client';
-import { ApiOperation } from '@nestjs/swagger';
+import { IsSubscribed } from 'src/shared/decorators/is-subscribed.decorator';
 
 @Controller('content-posting')
 export class ContentPostingController {
   constructor(private readonly contentPostingService: ContentPostingService) {}
 
   @Post('create-or-update-draft')
-  @ApiOperation({ summary: 'Create or update a draft post' })
+  @IsSubscribed()
   async createOrUpdateDraftPost(
     @UserInfo() userInfo: User,
     @Body() createOrUpdateDraftPostDto: CreateOrUpdateDraftPostDto,

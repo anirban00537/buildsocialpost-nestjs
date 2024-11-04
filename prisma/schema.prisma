@@ -146,6 +146,7 @@ model Subscription {
   userId                     Int      @unique
   orderId                    String   @unique
   status                     String
+  planId                     String
   endDate                    DateTime
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt

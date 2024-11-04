@@ -20,11 +20,11 @@ export class SubscriptionController {
   @UseGuards(JwtAuthGuard)
   async createCheckout(
     @UserInfo() user: User,
-    @Body() body: { productId: string; redirectUrl: string },
+    @Body() body: { variantId: string; redirectUrl: string },
   ) {
     const checkoutUrl = await this.subscriptionService.createCheckout(
       user,
-      body.productId,
+      body.variantId,
       body.redirectUrl,
     );
     return { checkoutUrl };

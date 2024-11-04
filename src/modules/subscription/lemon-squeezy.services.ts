@@ -4,6 +4,7 @@ import { errorResponse, successResponse } from 'src/shared/helpers/functions';
 import { ResponseModel } from 'src/shared/models/response.model';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { PlanId } from 'src/shared/constants/pricing';
 
 @Injectable()
 export class LemonSqueezyService {
@@ -259,6 +260,7 @@ export class LemonSqueezyService {
         userId: parseInt(orderData.custom_data?.userId || '0'),
         orderId: orderData.order_id,
         status: orderData.status,
+        planId: this.getPlanFromVariant(variantData?.attributes?.name || ''),
         endDate: new Date(orderData.ends_at),
         productName: productData?.attributes?.name || '',
         variantName: variantData?.attributes?.name || '',
@@ -291,11 +293,15 @@ export class LemonSqueezyService {
    */
   private async handleSubscriptionUpdated(payload: any): Promise<void> {
     const orderData = payload.data.attributes;
+    const variantData = payload.included?.find(
+      (item) => item.type === 'variants',
+    );
 
     await this.prisma.subscription.update({
       where: { orderId: orderData.order_id },
       data: {
         status: orderData.status,
+        planId: variantData ? this.getPlanFromVariant(variantData.attributes.name) : undefined,
         endDate: new Date(orderData.ends_at),
       },
     });
@@ -362,6 +368,7 @@ export class LemonSqueezyService {
           userId: parseInt(orderData.custom_data?.userId || '0'),
           orderId: orderData.order_id,
           status: 'active',
+          planId: this.getPlanFromVariant(variantData.attributes.name),
           endDate: new Date(
             orderData.ends_at ||
               this.calculateEndDate(variantData.attributes.interval),
@@ -431,5 +438,12 @@ export class LemonSqueezyService {
       default:
         return now;
     }
+  }
+
+  private getPlanFromVariant(variantName: string): PlanId {
+    const lowerVariant = variantName.toLowerCase();
+    if (lowerVariant.includes('starter')) return 'starter';
+    if (lowerVariant.includes('pro')) return 'pro';
+    return 'starter'; // default to starter if no match
   }
 }
