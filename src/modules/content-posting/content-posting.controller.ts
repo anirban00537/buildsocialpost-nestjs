@@ -44,4 +44,10 @@ export class ContentPostingController {
   async getDraftPost(@UserInfo() userInfo: User, @Param('id') id: number) {
     return this.contentPostingService.getDraftPost(userInfo.id, id);
   }
+
+  @Post('post-now/:id')
+  @IsSubscribed()
+  async postNow(@UserInfo() userInfo: User, @Param('id') postId: number) {
+    return this.contentPostingService.postNow(userInfo.id, postId);
+  }
 }

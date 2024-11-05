@@ -10,10 +10,14 @@ import {
   PaginationOptions,
 } from 'src/shared/utils/pagination.util';
 import { GetPostsQueryDto } from './dto/get-posts.query.dto';
+import { LinkedInService } from '../linkedin/linkedin.service';
 
 @Injectable()
 export class ContentPostingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly linkedInService: LinkedInService,
+  ) {}
 
   async getPosts(
     userInfo: User,
@@ -296,6 +300,96 @@ export class ContentPostingService {
       return errorResponse(
         `Failed to ${createOrUpdateDraftPostDto.id ? 'update' : 'create'} draft post: ${error.message}`,
       );
+    }
+  }
+
+  async postNow(userId: number, postId: number): Promise<ResponseModel> {
+    try {
+      const post = await this.prisma.linkedInPost.findFirst({
+        where: {
+          id: postId,
+          userId,
+          status: coreConstant.POST_STATUS.DRAFT,
+        },
+        include: {
+          linkedInProfile: true,
+        },
+      });
+
+      if (!post) {
+        return errorResponse('Draft post not found');
+      }
+
+      try {
+        // Create post on LinkedIn
+        const linkedInResponse = await this.linkedInService.createLinkedInPost(
+          post.linkedInProfile.profileId,
+          {
+            content: post.content,
+            imageUrls: post.imageUrls,
+            videoUrl: post.videoUrl,
+            documentUrl: post.documentUrl,
+          },
+        );
+
+        // Update post status and create success log
+        const updatedPost = await this.prisma.$transaction(async (prisma) => {
+          // Update post status
+          const updated = await prisma.linkedInPost.update({
+            where: { id: post.id },
+            data: {
+              status: coreConstant.POST_STATUS.PUBLISHED,
+              publishedAt: new Date(),
+            },
+            include: {
+              workspace: true,
+              linkedInProfile: true,
+              postLogs: {
+                orderBy: {
+                  createdAt: 'desc',
+                },
+                take: 1,
+              },
+            },
+          });
+
+          // Create success log
+          await prisma.postLog.create({
+            data: {
+              linkedInPostId: post.id,
+              status: coreConstant.POST_LOG_STATUS.PUBLISHED,
+              message: 'Post published successfully on LinkedIn',
+            },
+          });
+
+          return updated;
+        });
+
+        return successResponse('Post published successfully', {
+          post: updatedPost,
+        });
+
+      } catch (error) {
+        // Create failure log
+        await this.prisma.postLog.create({
+          data: {
+            linkedInPostId: post.id,
+            status: coreConstant.POST_LOG_STATUS.FAILED,
+            message: error.message,
+          },
+        });
+
+        // Update post status to failed
+        await this.prisma.linkedInPost.update({
+          where: { id: post.id },
+          data: { status: coreConstant.POST_STATUS.FAILED },
+        });
+
+        throw error;
+      }
+
+    } catch (error) {
+      return errorResponse(`Failed to publish post: ${error.message}`);
     }
   }
 }

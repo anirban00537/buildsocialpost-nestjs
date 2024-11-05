@@ -82,10 +82,12 @@ export class SubscriptionService {
       const plan_id = subscriptionStatus.plan;
       const plan = PRICING_PLANS.find((p) => p.id === plan_id);
       const limits = plan?.limits;
+      const userWordUsage = await this.getWordUsageData(user.id);
 
       return successResponse('Subscription checked successfully', {
         ...subscriptionStatus,
         limits,
+        userWordUsage: userWordUsage,
       });
     } catch (error) {
       this.logger.error('Error checking subscription:', error);

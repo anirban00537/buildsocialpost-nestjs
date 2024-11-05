@@ -4,6 +4,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
 import { successResponse, errorResponse } from 'src/shared/helpers/functions';
 import { ResponseModel } from 'src/shared/models/response.model';
+import {
+  LinkedInPostResponse,
+  LinkedInPostError,
+  LinkedInPostMedia,
+  LinkedInPostPayload,
+} from './types/linkedin-post.types';
 
 @Injectable()
 export class LinkedInService {
@@ -434,6 +440,95 @@ export class LinkedInService {
       return errorResponse(
         `Failed to set LinkedIn profile as default: ${error.message}`,
       );
+    }
+  }
+
+  async createLinkedInPost(
+    profileId: string,
+    postData: {
+      content: string;
+      imageUrls?: string[];
+      videoUrl?: string;
+      documentUrl?: string;
+    },
+  ): Promise<LinkedInPostResponse> {
+    try {
+      const profile = await this.prisma.linkedInProfile.findUnique({
+        where: { profileId },
+      });
+
+      if (!profile) {
+        throw new Error('LinkedIn profile not found');
+      }
+
+      if (await this.isTokenExpired(profileId)) {
+        throw new Error(
+          'LinkedIn token has expired. Please reconnect your account.',
+        );
+      }
+
+      const author = `urn:li:person:${profile.creatorId}`;
+
+      // Prepare the post payload
+      const postPayload: LinkedInPostPayload = {
+        author,
+        lifecycleState: 'PUBLISHED',
+        specificContent: {
+          'com.linkedin.ugc.ShareContent': {
+            shareCommentary: {
+              text: postData.content,
+            },
+            shareMediaCategory: 'NONE',
+          },
+        },
+        visibility: {
+          'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC',
+        },
+      };
+
+      // Handle media attachments
+      if (postData.imageUrls?.length) {
+        postPayload.specificContent[
+          'com.linkedin.ugc.ShareContent'
+        ].shareMediaCategory = 'IMAGE';
+        postPayload.specificContent['com.linkedin.ugc.ShareContent'].media =
+          postData.imageUrls.map((url) => ({
+            status: 'READY',
+            description: {
+              text: 'Image',
+            },
+            media: url,
+            title: {
+              text: 'Image',
+            },
+          }));
+      }
+
+      // Make the API call to LinkedIn
+      const response = await axios.post<LinkedInPostResponse>(
+        `${this.baseUrl}/ugcPosts`,
+        postPayload,
+        {
+          headers: {
+            Authorization: `Bearer ${profile.accessToken}`,
+            'X-Restli-Protocol-Version': '2.0.0',
+            'LinkedIn-Version': this.apiVersion,
+          },
+        },
+      );
+
+      return {
+        postId: response.data.postId,
+        author: response.data.author,
+        created: response.data.created,
+      };
+    } catch (error) {
+      this.logger.error('Error creating LinkedIn post:', {
+        error: error.response?.data || error.message,
+        status: error.response?.status,
+      });
+
+      throw error;
     }
   }
 }
