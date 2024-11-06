@@ -1,6 +1,7 @@
 import { Module, NestModule, RequestMethod } from '@nestjs/common';
 import { MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
@@ -21,6 +22,7 @@ import { WorkspaceModule } from '../workspace/workspace.module';
 import { AiContentModule } from '../ai-content/ai-content.module';
 import { ContentPostingModule } from '../content-posting/content-posting.module';
 import { LinkedInModule } from '../linkedin/linkedin.module';
+import { SchedulingModule } from '../scheduling/scheduling.module';
 
 @Module({
   imports: [
@@ -28,6 +30,7 @@ import { LinkedInModule } from '../linkedin/linkedin.module';
       isGlobal: true,
       load: [MailConfig],
     }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     UsersModule,
@@ -42,6 +45,7 @@ import { LinkedInModule } from '../linkedin/linkedin.module';
     AiContentModule,
     ContentPostingModule,
     LinkedInModule,
+    SchedulingModule,
   ],
   providers: [
     {

@@ -50,4 +50,19 @@ export class ContentPostingController {
   async postNow(@UserInfo() userInfo: User, @Param('id') postId: number) {
     return this.contentPostingService.postNow(userInfo.id, postId);
   }
+
+  @Post('schedule/:id')
+  @IsSubscribed()
+  async schedulePost(
+    @UserInfo() userInfo: User,
+    @Param('id') postId: number,
+    @Body() scheduleDto: { scheduledTime: string; timeZone: string },
+  ) {
+    return this.contentPostingService.schedulePost(
+      userInfo.id,
+      postId,
+      scheduleDto.scheduledTime,
+      scheduleDto.timeZone,
+    );
+  }
 }

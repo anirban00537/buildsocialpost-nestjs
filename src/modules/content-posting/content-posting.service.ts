@@ -11,6 +11,7 @@ import {
 } from 'src/shared/utils/pagination.util';
 import { GetPostsQueryDto } from './dto/get-posts.query.dto';
 import { LinkedInService } from '../linkedin/linkedin.service';
+import { isValidTimeZone } from 'src/shared/utils/timezone.util';
 
 @Injectable()
 export class ContentPostingService {
@@ -311,7 +312,9 @@ export class ContentPostingService {
         where: {
           id: postId,
           userId,
-          status: coreConstant.POST_STATUS.DRAFT,
+          status: {
+            in: [coreConstant.POST_STATUS.DRAFT, coreConstant.POST_STATUS.SCHEDULED]
+          },
         },
         include: {
           linkedInProfile: true,
@@ -319,7 +322,7 @@ export class ContentPostingService {
       });
 
       if (!post) {
-        return errorResponse('Draft post not found');
+        return errorResponse('Post not found');
       }
 
       try {
@@ -390,6 +393,80 @@ export class ContentPostingService {
       }
     } catch (error) {
       return errorResponse(`Failed to publish post: ${error.message}`);
+    }
+  }
+
+  async schedulePost(
+    userId: number,
+    postId: number,
+    scheduledTime: string,
+    timeZone: string,
+  ): Promise<ResponseModel> {
+    try {
+      // Validate timezone
+      if (!isValidTimeZone(timeZone)) {
+        return errorResponse('Invalid timezone');
+      }
+
+      const post = await this.prisma.linkedInPost.findFirst({
+        where: {
+          id: postId,
+          userId,
+          status: coreConstant.POST_STATUS.DRAFT,
+        },
+      });
+
+      if (!post) {
+        return errorResponse('Draft post not found');
+      }
+
+      // Convert scheduled time to UTC
+      const scheduledDate = new Date(scheduledTime);
+      if (isNaN(scheduledDate.getTime())) {
+        return errorResponse('Invalid date format');
+      }
+
+      // Ensure scheduled time is in the future
+      if (scheduledDate <= new Date()) {
+        return errorResponse('Scheduled time must be in the future');
+      }
+
+      // Update post status and scheduled time
+      const updatedPost = await this.prisma.$transaction(async (prisma) => {
+        const updated = await prisma.linkedInPost.update({
+          where: { id: post.id },
+          data: {
+            status: coreConstant.POST_STATUS.SCHEDULED,
+            scheduledTime: scheduledDate,
+          },
+          include: {
+            workspace: true,
+            linkedInProfile: true,
+            postLogs: {
+              orderBy: {
+                createdAt: 'desc',
+              },
+              take: 1,
+            },
+          },
+        });
+
+        await prisma.postLog.create({
+          data: {
+            linkedInPostId: post.id,
+            status: coreConstant.POST_LOG_STATUS.SCHEDULED,
+            message: `Post scheduled for ${scheduledTime} ${timeZone}`,
+          },
+        });
+
+        return updated;
+      });
+
+      return successResponse('Post scheduled successfully', {
+        post: updatedPost,
+      });
+    } catch (error) {
+      return errorResponse(`Failed to schedule post: ${error.message}`);
     }
   }
 }
