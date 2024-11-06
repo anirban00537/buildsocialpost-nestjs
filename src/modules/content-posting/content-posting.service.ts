@@ -210,15 +210,17 @@ export class ContentPostingService {
       }
 
       // Verify LinkedIn profile exists and belongs to user
-      const linkedInProfile = await this.prisma.linkedInProfile.findFirst({
-        where: {
-          id: createOrUpdateDraftPostDto.linkedInProfileId,
-          userId: userId,
-        },
-      });
+      if (createOrUpdateDraftPostDto.linkedInProfileId) {
+        const linkedInProfile = await this.prisma.linkedInProfile.findFirst({
+          where: {
+            id: createOrUpdateDraftPostDto.linkedInProfileId,
+            userId: userId,
+          },
+        });
 
-      if (!linkedInProfile) {
-        return errorResponse('LinkedIn profile not found');
+        if (!linkedInProfile) {
+          return errorResponse('LinkedIn profile not found');
+        }
       }
 
       const postData = {
@@ -368,7 +370,6 @@ export class ContentPostingService {
         return successResponse('Post published successfully', {
           post: updatedPost,
         });
-
       } catch (error) {
         // Create failure log
         await this.prisma.postLog.create({
@@ -387,7 +388,6 @@ export class ContentPostingService {
 
         throw error;
       }
-
     } catch (error) {
       return errorResponse(`Failed to publish post: ${error.message}`);
     }
