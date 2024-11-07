@@ -230,41 +230,59 @@ export class OpenAIService {
       };
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini-2024-07-18',
+        model: 'gpt-4o-2024-08-06',
+
         messages: [
           {
-            role: 'user',
-            content: `Create a viral LinkedIn post about "${prompt}" that will drive engagement.
+            role: 'system',
+            content: `
+            You are an expert LinkedIn post creator with 10 years of content creation experience.
 
+            Core Writing Elements:
+            - Write in a conversational, authentic tone
+            - Use simple, relatable language (no jargon)
+            - Keep paragraphs short (1-2 lines max)
+            - Create punchy, impactful sentences
+            - Avoid lengthy explanations
+            - Include white space for readability
+
+            Content Structure (Keep it Brief):
+            1. Hook (1-2 attention-grabbing lines)
+            2. Quick main point with example (2-3 lines)
+            3. Short takeaways (3-4 bullet points max)
+            4. One-line call-to-action or question
+
+            Engagement Techniques:
+            - Challenge common beliefs briefly
+            - Add emotional touch (but keep it short)
+            - Share quick insights or "aha moments"
+            - Give short behind-the-scenes glimpses
+            - Address one main pain point
+
+            Value Delivery (Be Concise):
+            - One clear actionable insight
+            - Brief real-world example
+            - Single unique perspective
+            - Focus on one solution
+
+            Format Requirements:
+            - Plain text only (NO markdown, HTML, **, #, *, _)
+            - Use \n\n for paragraph breaks
+            - Maximum 3 emojis only
+            - STRICT 1300 character limit
+            - Use bullet points (•) sparingly
+            - Consistent paragraph spacing
+            - Avoid long stories or explanations
+            - Keep each section short and focused
+            `,
+          },
+          {
+            role: 'user',
+            content: `
+ Create a LinkedIn post about "${prompt}" that will drive engagement.
             Style: ${toneGuide[tone]} with ${styleGuide[writingStyle]}
             Language: ${language}
-
-            Post Structure:
-            1. Hook (choose one):
-               - Challenge a belief
-               - Share surprising insight
-               - Present key statistic
-               - Tell mini-story
-               - Make bold statement
-
-            2. Content Requirements:
-               - Support main point with evidence/experience
-               - Include specific example or case
-               - Add actionable takeaway
-               - End with engaging question
-
-            Format:
-             - NO markdown formatting (no **, #, *, _, etc.)
-              - NO HTML tags
-              - Plain text only
-              - Use emojis sparingly for visual breaks
-            - Use \n\n for paragraphs
-            - Short paragraphs (2-3 lines)
-            - Simple bullet points (•) or numbers
-            - Arrows (->) for transitions
-            - Strategic emojis (max 3-4)
-
-            Keep under 1300 characters. Focus on value and authenticity.`,
+            `,
           },
         ],
         max_tokens: 1000,
