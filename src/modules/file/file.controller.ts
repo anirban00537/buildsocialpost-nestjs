@@ -35,13 +35,6 @@ export class FileController {
   ): Promise<ResponseModel> {
     return this.fileService.uploadImage(file, user);
   }
-  @Post('upload-image')
-  async uploadImageJustUrl(
-    @UploadedFile() file: Express.Multer.File,
-    @UserInfo() user: User,
-  ): Promise<ResponseModel> {
-    return this.fileService.uploadImage(file, user);
-  }
   @Get()
   async getFiles(
     @UserInfo() user: User,

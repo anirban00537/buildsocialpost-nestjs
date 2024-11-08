@@ -12,6 +12,7 @@ import {
 import { GetPostsQueryDto } from './dto/get-posts.query.dto';
 import { LinkedInService } from '../linkedin/linkedin.service';
 import { isValidTimeZone } from 'src/shared/utils/timezone.util';
+import { validateLinkedInImage } from 'src/shared/utils/image-validation.util';
 
 @Injectable()
 export class ContentPostingService {
@@ -327,10 +328,75 @@ export class ContentPostingService {
       if (!post) {
         return errorResponse('Post not found');
       }
-      console.log('=== Post Data ===', post);
+
+      // Content validation
+      if (!post.content?.trim()) {
+        return errorResponse('Post content cannot be empty');
+      }
+
+      if (post.content.length > coreConstant.LINKEDIN.MAX_CONTENT_LENGTH) {
+        return errorResponse(
+          `Content exceeds LinkedIn's ${coreConstant.LINKEDIN.MAX_CONTENT_LENGTH} character limit`,
+        );
+      }
+
+      // Image validation
+      if (post.imageUrls?.length) {
+        if (post.imageUrls.length > coreConstant.LINKEDIN.MAX_IMAGES) {
+          return errorResponse(
+            `LinkedIn allows maximum of ${coreConstant.LINKEDIN.MAX_IMAGES} images per post`,
+          );
+        }
+
+        // Validate each image
+        console.log('Validating images...');
+        const imageValidationPromises = post.imageUrls.map((url) =>
+          validateLinkedInImage(url, {
+            maxSize: coreConstant.LINKEDIN.MAX_IMAGE_SIZE,
+            supportedTypes: coreConstant.LINKEDIN.SUPPORTED_IMAGE_TYPES,
+            minDimensions: coreConstant.LINKEDIN.MIN_IMAGE_DIMENSIONS,
+            maxDimensions: coreConstant.LINKEDIN.MAX_IMAGE_DIMENSIONS,
+            aspectRatio: coreConstant.LINKEDIN.ASPECT_RATIO,
+          }),
+        );
+
+        const imageValidationResults = await Promise.all(
+          imageValidationPromises,
+        );
+        const invalidImages = imageValidationResults
+          .map((result, index) => ({ result, url: post.imageUrls[index] }))
+          .filter((item) => !item.result.isValid);
+
+        if (invalidImages.length > 0) {
+          const errors = invalidImages
+            .map((item) => `Image ${item.url}: ${item.result.error}`)
+            .join(', ');
+          return errorResponse(`Invalid images found: ${errors}`);
+        }
+      }
+
+      // Media combination validation
+      if (post.videoUrl && post.imageUrls?.length) {
+        return errorResponse(
+          'Cannot post both video and images simultaneously on LinkedIn',
+        );
+      }
+
+      if (post.documentUrl && (post.imageUrls?.length || post.videoUrl)) {
+        return errorResponse(
+          'Cannot post document with images or video on LinkedIn',
+        );
+      }
+
+      console.log('=== Post Data ===', {
+        ...post,
+        content: post.content.substring(0, 100) + '...',
+        imageCount: post.imageUrls?.length || 0,
+        hasVideo: !!post.videoUrl,
+        hasDocument: !!post.documentUrl,
+      });
 
       try {
-        // Create post on LinkedIn
         const linkedInResponse = await this.linkedInService.createLinkedInPost(
           post.linkedInProfile.profileId,
           {
@@ -343,12 +409,12 @@ export class ContentPostingService {
 
         // Update post status and create success log
         const updatedPost = await this.prisma.$transaction(async (prisma) => {
-          // Update post status
           const updated = await prisma.linkedInPost.update({
             where: { id: post.id },
             data: {
               status: coreConstant.POST_STATUS.PUBLISHED,
               publishedAt: new Date(),
+              publishedId: linkedInResponse.postId,
             },
             include: {
               workspace: true,
@@ -362,12 +428,12 @@ export class ContentPostingService {
             },
           });
 
-          // Create success log
           await prisma.postLog.create({
             data: {
               linkedInPostId: post.id,
               status: coreConstant.POST_LOG_STATUS.PUBLISHED,
-              message: 'Post published successfully on LinkedIn',
+              message: `Post published successfully on LinkedIn. Post ID: ${linkedInResponse.postId}`,
+              timestamp: new Date(),
             },
           });
 

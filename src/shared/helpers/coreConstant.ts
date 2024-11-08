@@ -47,4 +47,30 @@ export const coreConstant = {
     MAX_VIDEO_SIZE: 200 * 1024 * 1024, // 200MB
     MAX_DOCUMENT_SIZE: 100 * 1024 * 1024, // 100MB
   },
+
+  // LinkedIn Specific Constants
+  LINKEDIN: {
+    MAX_IMAGES: 9,
+    MAX_CONTENT_LENGTH: 3000,
+    SUPPORTED_IMAGE_TYPES: ['image/jpeg', 'image/png'],
+    MAX_IMAGE_SIZE: 5 * 1024 * 1024, // 5MB
+    MIN_IMAGE_DIMENSIONS: {
+      WIDTH: 552,
+      HEIGHT: 276
+    },
+    MAX_IMAGE_DIMENSIONS: {
+      WIDTH: 2048,
+      HEIGHT: 2048
+    },
+    ASPECT_RATIO: {
+      MIN: 1/1.91,  // 1:1.91
+      MAX: 1/1      // 1:1
+    },
+    MEDIA_CATEGORIES: {
+      NONE: 'NONE',
+      IMAGE: 'IMAGE',
+      VIDEO: 'VIDEO',
+      DOCUMENT: 'DOCUMENT'
+    }
+  },
 };
