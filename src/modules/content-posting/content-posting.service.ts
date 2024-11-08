@@ -308,7 +308,7 @@ export class ContentPostingService {
 
   async postNow(userId: number, postId: number): Promise<ResponseModel> {
     try {
-      const post = await this.prisma.linkedInPost.findFirst({
+      const post = await this.prisma.linkedInPost.findUnique({
         where: {
           id: postId,
           userId,
@@ -327,6 +327,7 @@ export class ContentPostingService {
       if (!post) {
         return errorResponse('Post not found');
       }
+      console.log('=== Post Data ===', post);
 
       try {
         // Create post on LinkedIn

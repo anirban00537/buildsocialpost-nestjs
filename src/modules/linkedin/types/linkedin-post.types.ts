@@ -1,7 +1,9 @@
 export interface LinkedInPostResponse {
   postId: string;
   author: string;
-  created: number;
+  created?: {
+    time: number;
+  };
 }
 
 export interface LinkedInPostError {
@@ -29,7 +31,7 @@ export interface LinkedInPostPayload {
       shareCommentary: {
         text: string;
       };
-      shareMediaCategory: 'NONE' | 'IMAGE' | 'VIDEO' | 'ARTICLE';
+      shareMediaCategory: 'NONE' | 'IMAGE';
       media?: LinkedInPostMedia[];
     };
   };
