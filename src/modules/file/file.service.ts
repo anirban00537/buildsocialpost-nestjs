@@ -37,7 +37,8 @@ export class FileService {
     user: User,
   ): Promise<ResponseModel> {
     try {
-      const isSubscribed = await this.subscriptionService.checkSubscription(user);
+      const isSubscribed =
+        await this.subscriptionService.checkSubscription(user);
       if (!isSubscribed.isSubscribed) {
         return errorResponse(
           'User is not subscribed, please subscribe to upload images',
@@ -88,7 +89,26 @@ export class FileService {
       return errorResponse('File upload failed due to an unknown error');
     }
   }
+  async uploadImageJustUrl(
+    file: Express.Multer.File,
+    user: User,
+  ): Promise<ResponseModel> {
+    try {
+      console.log('Attempting to upload file:', file.originalname);
 
+      const url = await uploadFile(file, user.id);
+      if (!url) {
+        console.error('uploadFile function returned null');
+        return errorResponse('File upload failed');
+      }
+
+      console.log('File uploaded successfully to S3. URL:', url);
+      return successResponse('File uploaded successfully', { url });
+    } catch (error) {
+      console.error('Upload error:', error);
+      return errorResponse('File upload failed');
+    }
+  }
   async getFiles(
     user: User,
     options: PaginationOptions = {},

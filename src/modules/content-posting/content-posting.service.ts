@@ -313,7 +313,10 @@ export class ContentPostingService {
           id: postId,
           userId,
           status: {
-            in: [coreConstant.POST_STATUS.DRAFT, coreConstant.POST_STATUS.SCHEDULED]
+            in: [
+              coreConstant.POST_STATUS.DRAFT,
+              coreConstant.POST_STATUS.SCHEDULED,
+            ],
           },
         },
         include: {
@@ -418,6 +421,9 @@ export class ContentPostingService {
 
       if (!post) {
         return errorResponse('Draft post not found');
+      }
+      if (!post.linkedInProfileId) {
+        return errorResponse('Select a LinkedIn profile to schedule the post');
       }
 
       // Convert scheduled time to UTC
