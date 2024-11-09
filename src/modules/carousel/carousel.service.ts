@@ -161,6 +161,7 @@ export class CarouselService {
   async scheduleCarousel(
     documentUrl: string,
     carouselId: number,
+    content: string,
     user: User,
   ): Promise<ResponseModel> {
     try {
@@ -182,7 +183,7 @@ export class CarouselService {
       // Create draft post
       console.log('Creating draft post...');
       const draftPostData = {
-        content: "demo content",
+        content: content,
         postType: PostType.DOCUMENT,
         workspaceId: carousel.workspaceId,
         documentUrl: documentUrl,

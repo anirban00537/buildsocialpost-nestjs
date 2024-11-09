@@ -11,6 +11,7 @@ interface TokenCheckResult {
   message: string;
   remainingTokens: number;
   totalTokens: number;
+  wordCount: number;
 }
 
 @Injectable()
@@ -51,6 +52,7 @@ export class AiContentService {
           message: 'TOKEN_NOT_FOUND',
           remainingTokens: 0,
           totalTokens: 0,
+          wordCount: 0,
         };
       }
 
@@ -60,6 +62,7 @@ export class AiContentService {
           message: 'TOKEN_EXPIRED',
           remainingTokens: 0,
           totalTokens: wordUsage.totalWordLimit,
+          wordCount: 0,
         };
       }
 
@@ -72,6 +75,7 @@ export class AiContentService {
           message: 'INSUFFICIENT_TOKENS',
           remainingTokens,
           totalTokens: wordUsage.totalWordLimit,
+          wordCount: 0,
         };
       }
 
@@ -80,6 +84,7 @@ export class AiContentService {
         message: 'TOKENS_AVAILABLE',
         remainingTokens,
         totalTokens: wordUsage.totalWordLimit,
+        wordCount: wordCount,
       };
     } catch (error) {
       this.logger.error(`Error checking token availability: ${error.message}`);
@@ -151,6 +156,35 @@ export class AiContentService {
     }
   }
 
+  private async checkAndDeductTokens(
+    userId: number,
+    content: string,
+  ): Promise<TokenCheckResult> {
+    try {
+      const wordCount = this.calculateWordCount(content);
+      
+      // Check token availability
+      const tokenCheck = await this.checkTokenAvailability(userId, wordCount);
+      if (!tokenCheck.isValid) {
+        return tokenCheck;
+      }
+
+      // Deduct tokens if available
+      await this.deductTokens(userId, wordCount);
+
+      return {
+        isValid: true,
+        message: 'Tokens deducted successfully',
+        remainingTokens: tokenCheck.remainingTokens - wordCount,
+        totalTokens: tokenCheck.totalTokens,
+        wordCount, // Added to return word count
+      };
+    } catch (error) {
+      this.logger.error(`Error in checkAndDeductTokens: ${error.message}`);
+      throw error;
+    }
+  }
+
   async generateCarouselContent(
     userId: number,
     dto: GenerateCarouselContentDto,
@@ -166,18 +200,10 @@ export class AiContentService {
           dto.targetAudience,
         );
 
-      const actualWordCount = this.calculateWordCount(content);
-
-      const tokenCheck = await this.checkTokenAvailability(
-        userId,
-        actualWordCount,
-      );
-
+      const tokenCheck = await this.checkAndDeductTokens(userId, content);
       if (!tokenCheck.isValid) {
         return errorResponse(this.getErrorMessage(tokenCheck.message));
       }
-
-      await this.deductTokens(userId, actualWordCount);
 
       let colorPaletteResponse: string | null = null;
       if (dto.themeActive) {
@@ -196,8 +222,8 @@ export class AiContentService {
       return successResponse('Carousel content generated successfully', {
         response,
         colorPalette,
-        wordCount: actualWordCount,
-        remainingTokens: tokenCheck.remainingTokens - actualWordCount,
+        wordCount: tokenCheck.wordCount,
+        remainingTokens: tokenCheck.remainingTokens,
         totalTokens: tokenCheck.totalTokens,
       });
     } catch (error) {
@@ -217,28 +243,47 @@ export class AiContentService {
         dto.tone,
       );
 
-      const actualWordCount = this.calculateWordCount(rawContent);
-
-      const tokenCheck = await this.checkTokenAvailability(
-        userId,
-        actualWordCount,
-      );
-
+      const tokenCheck = await this.checkAndDeductTokens(userId, rawContent);
       if (!tokenCheck.isValid) {
         return errorResponse(this.getErrorMessage(tokenCheck.message));
       }
 
-      await this.deductTokens(userId, actualWordCount);
-
       return successResponse('LinkedIn post generated successfully', {
         post: rawContent,
-        wordCount: actualWordCount,
-        remainingTokens: tokenCheck.remainingTokens - actualWordCount,
+        wordCount: tokenCheck.wordCount,
+        remainingTokens: tokenCheck.remainingTokens,
         totalTokens: tokenCheck.totalTokens,
       });
     } catch (error) {
       this.logger.error(`Error generating LinkedIn post: ${error.message}`);
       return errorResponse('Error generating LinkedIn post');
+    }
+  }
+
+  async generateLinkedInPostContentForCarousel(
+    userId: number,
+    topic: string,
+  ): Promise<ResponseModel> {
+    try {
+      const content =
+        await this.openAIService.generateLinkedInPostContentForCarousel(topic);
+      
+      const tokenCheck = await this.checkAndDeductTokens(userId, content);
+      if (!tokenCheck.isValid) {
+        return errorResponse(this.getErrorMessage(tokenCheck.message));
+      }
+
+      return successResponse('LinkedIn post content generated successfully', {
+        post: content,
+        wordCount: tokenCheck.wordCount,
+        remainingTokens: tokenCheck.remainingTokens,
+        totalTokens: tokenCheck.totalTokens,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Error generating LinkedIn post content for carousel: ${error.message}`,
+      );
+      return errorResponse('Error generating LinkedIn post content for carousel');
     }
   }
 

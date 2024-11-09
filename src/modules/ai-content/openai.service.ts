@@ -218,7 +218,7 @@ export class OpenAIService {
       };
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-2024-08-06',
+        model: 'gpt-4o-mini-2024-07-18',
 
         messages: [
           {
@@ -274,6 +274,53 @@ export class OpenAIService {
           },
         ],
         max_tokens: 1000,
+        temperature: 0.7,
+      });
+
+      if (response && response.choices && response.choices.length > 0) {
+        return response.choices[0].message.content;
+      } else {
+        throw new Error('No response from OpenAI');
+      }
+    } catch (error) {
+      this.logger.error('Error generating LinkedIn post:', error);
+      throw error;
+    }
+  }
+
+  async generateLinkedInPostContentForCarousel(topic: string): Promise<string> {
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini-2024-07-18',
+        messages: [
+          {
+            role: 'user',
+            content: `You are a professional LinkedIn content strategist specializing in carousel posts.
+
+Your task: Create a compelling LinkedIn post to introduce a carousel about "${topic}".
+
+Requirements:
+- Keep it concise 300 characters max
+- Include a hook in the first line
+- Focus on value proposition
+- Create curiosity about the carousel content
+- Add a clear call-to-action to check the carousel
+- Use professional but conversational tone
+- Include relevant emojis (2-3 max)
+- Don't reveal all the carousel content
+- Plain text only (NO markdown, HTML, **, #, *, _)
+- Create punchy, impactful sentences
+- Avoid lengthy explanations
+- Include white space for readability
+- Use \n\n for paragraph breaks
+- Consistent paragraph spacing
+- End with "Swipe through the carousel to learn more ➡️"
+
+Make it engaging and professional while maintaining brevity.
+            `,
+          },
+        ],
+        max_tokens: 200,
         temperature: 0.7,
       });
 

@@ -18,6 +18,14 @@ export class AiContentController {
     return this.aiContentService.generateCarouselContent(user.id, dto);
   }
 
+  @Post('generate-linkedin-post-content-for-carousel')
+  generateLinkedInPostContentForCarousel(
+    @UserInfo() user: User,
+    @Body() { topic }: { topic: string },
+  ): Promise<ResponseModel> {
+    return this.aiContentService.generateLinkedInPostContentForCarousel(user.id, topic);
+  }
+
   @Post('generate-linkedin-posts')
   generateLinkedInPosts(
     @UserInfo() user: User,

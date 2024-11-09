@@ -52,7 +52,7 @@
     "lemonsqueezy.ts": "^0.1.7",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.7.0",
-    "openai": "^4.67.3",
+    "openai": "^4.71.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
