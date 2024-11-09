@@ -195,4 +195,46 @@ export class FileService {
       return errorResponse('Failed to retrieve image usage');
     }
   }
+
+  async uploadFileAndGetUrl(
+    file: Express.Multer.File,
+    user: User,
+  ): Promise<string> {
+    // Check subscription
+    const isSubscribed = await this.subscriptionService.checkSubscription(user);
+    if (!isSubscribed.isSubscribed) {
+      throw new Error('User is not subscribed, please subscribe to upload files');
+    }
+
+    // Check storage limit
+    const imageUsage: any = await this.getImageUsage(user.id);
+    if (imageUsage.data.totalSize >= coreConstant.MAX_IMAGE_SIZE) {
+      throw new Error('User has reached the limit of 500MB');
+    }
+
+    // Upload file to S3
+    console.log('Attempting to upload file:', file.originalname);
+    const url = await uploadFile(file, user.id);
+    if (!url) {
+      throw new Error('File upload to S3 failed');
+    }
+
+    // Extract the path from the S3 URL
+    const path = new URL(url).pathname;
+
+    // Create file record in database
+    await this.prisma.file.create({
+      data: {
+        name: file.originalname,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+        url: url,
+        path: path,
+        user: { connect: { id: user.id } },
+      },
+    });
+
+    return url;
+  }
 }

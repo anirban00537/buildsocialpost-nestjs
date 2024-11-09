@@ -12,10 +12,16 @@ import { ApiUnsupportedMediaTypeResponse } from '@nestjs/swagger';
 import { ResponseModel } from 'src/shared/models/response.model';
 import { errorResponse, successResponse } from 'src/shared/helpers/functions';
 import { CarouselPaginationOptions } from './types/carousel';
+import { deleteFileFromS3, uploadFile } from 'src/shared/configs/multer-upload.config';
+import { ContentPostingService } from '../content-posting/content-posting.service';
+import { PostType } from '../content-posting/dto/create-draft-post.dto';
 
 @Injectable()
 export class CarouselService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly contentPostingService: ContentPostingService,
+  ) {}
 
   async createCarousel(
     createCarouselDto: CreateCarouselDto,
@@ -150,5 +156,55 @@ export class CarouselService {
       }
       return successResponse('Here is your carousels', result);
     } catch (error) {}
+  }
+
+  async scheduleCarousel(
+    documentUrl: string,
+    carouselId: number,
+    user: User,
+  ): Promise<ResponseModel> {
+    try {
+      // Get carousel data
+      const carousel = await this.prisma.carousel.findFirst({
+        where: {
+          id: carouselId,
+          userId: user.id,
+        },
+        include: {
+          workspace: true,
+        },
+      });
+
+      if (!carousel) {
+        return errorResponse('Carousel not found');
+      }
+
+      // Create draft post
+      console.log('Creating draft post...');
+      const draftPostData = {
+        content: "demo content",
+        postType: PostType.DOCUMENT,
+        workspaceId: carousel.workspaceId,
+        documentUrl: documentUrl,
+      };
+
+      const createDraftResponse = await this.contentPostingService.createOrUpdateDraftPost(
+        user.id,
+        draftPostData,
+      );
+
+      if (!createDraftResponse.success) {
+        return errorResponse(`Failed to create draft: ${createDraftResponse.message}`);
+      }
+
+      return successResponse('Carousel scheduled successfully', {
+        post: createDraftResponse.data,
+        documentUrl,
+      });
+
+    } catch (error) {
+      console.error('Error scheduling carousel:', error);
+      return errorResponse(`Failed to schedule carousel: ${error.message}`);
+    }
   }
 }

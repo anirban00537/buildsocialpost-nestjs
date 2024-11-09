@@ -8,6 +8,8 @@ import {
   Post,
   Put,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { CarouselService } from './carousel.service';
 import { CreateCarouselDto } from './dto/create-carousel.dto';
@@ -17,10 +19,18 @@ import { UpdateCarouselDto } from './dto/update-carousel.dto';
 import { Carousel, User } from '@prisma/client';
 import { IsAdmin } from 'src/shared/decorators/is-admin.decorator';
 import { GetCarouselQueryDto, GetCarouselsQueryDto } from './dto/query.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { multerUploadConfig } from 'src/shared/configs/multer-upload.config';
+import { FileService } from 'src/modules/file/file.service';
+import { errorResponse } from 'src/shared/helpers/functions';
 
 @Controller('my-carousels')
 export class CarouselController {
-  constructor(private readonly carouselService: CarouselService) {}
+  constructor(
+    private readonly carouselService: CarouselService,
+    private readonly fileService: FileService,
+  ) {}
 
   @Post('create')
   createCarousel(
@@ -76,5 +86,30 @@ export class CarouselController {
     @Query('pageSize') pageSize: number,
   ): Promise<ResponseModel> {
     return this.carouselService.getAllCarousels({ page, pageSize });
+  }
+
+  @Post('schedule-carousel')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      ...multerUploadConfig,
+      fileFilter: (req, file, callback) => {
+        if (file.mimetype !== 'application/pdf') {
+          callback(new Error('Only PDF files are allowed'), false);
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async scheduleCarousel(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('carouselId', ParseIntPipe) carouselId: number,
+    @UserInfo() user: User,
+  ): Promise<ResponseModel> {
+    const fileUrl = await this.fileService.uploadFileAndGetUrl(file, user);
+    if (!fileUrl) {
+      return errorResponse('Failed to upload file');
+    }
+    return this.carouselService.scheduleCarousel(fileUrl, carouselId, user);
   }
 }

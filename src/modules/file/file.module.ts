@@ -13,5 +13,6 @@ import { SubscriptionModule } from '../subscription/subscription.module';
   ],
   controllers: [FileController],
   providers: [FileService],
+  exports: [FileService],
 })
 export class FileModule {}
