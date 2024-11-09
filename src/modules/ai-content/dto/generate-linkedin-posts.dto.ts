@@ -12,7 +12,4 @@ export class GenerateLinkedInPostsDto {
   @IsString()
   tone?: string;
 
-  @IsOptional()
-  @IsString()
-  writingStyle?: string;
 }

@@ -204,7 +204,6 @@ export class OpenAIService {
     prompt: string,
     language: string = 'en',
     tone: string = 'professional',
-    writingStyle: string = 'educational',
   ): Promise<string> {
     try {
       const toneGuide = {
@@ -216,17 +215,6 @@ export class OpenAIService {
         formal: 'Maintain sophisticated, business-appropriate language',
         inspirational: 'Use motivational, uplifting messaging',
         technical: 'Employ precise, technical terminology',
-      };
-
-      const styleGuide = {
-        storytelling: 'narrative-driven with compelling plot',
-        direct: 'straightforward and to-the-point',
-        educational: 'informative with clear learning points',
-        persuasive: 'convincing arguments and clear benefits',
-        analytical: 'data-driven insights and logical analysis',
-        conversational: 'natural dialogue-like flow',
-        descriptive: 'rich details and vivid explanations',
-        engaging: 'interactive and attention-grabbing',
       };
 
       const response = await this.openai.chat.completions.create({
@@ -280,7 +268,7 @@ export class OpenAIService {
             role: 'user',
             content: `
  Create a LinkedIn post about "${prompt}" that will drive engagement.
-            Style: ${toneGuide[tone]} with ${styleGuide[writingStyle]}
+            Style: ${toneGuide[tone]}
             Language: ${language}
             `,
           },

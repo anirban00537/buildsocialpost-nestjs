@@ -215,7 +215,6 @@ export class AiContentService {
         dto.prompt,
         dto.language,
         dto.tone,
-        dto.writingStyle,
       );
 
       const actualWordCount = this.calculateWordCount(rawContent);
