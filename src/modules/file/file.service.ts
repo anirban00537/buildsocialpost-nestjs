@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { uploadFile, deleteFileFromS3 } from '../../shared/configs/multer-upload.config';
+import {
+  uploadFile,
+  deleteFileFromS3,
+} from '../../shared/configs/multer-upload.config';
 import { ResponseModel } from 'src/shared/models/response.model';
 import { errorResponse, successResponse } from 'src/shared/helpers/functions';
 import {
@@ -37,14 +40,6 @@ export class FileService {
     user: User,
   ): Promise<ResponseModel> {
     try {
-      const isSubscribed =
-        await this.subscriptionService.checkSubscription(user);
-      if (!isSubscribed.isSubscribed) {
-        return errorResponse(
-          'User is not subscribed, please subscribe to upload images',
-        );
-      }
-
       const imageUsage: any = await this.getImageUsage(user.id);
       if (imageUsage.data.totalSize >= coreConstant.MAX_IMAGE_SIZE) {
         return errorResponse('User has reached the limit of 500MB');
@@ -89,7 +84,7 @@ export class FileService {
       return errorResponse('File upload failed due to an unknown error');
     }
   }
-  
+
   async getFiles(
     user: User,
     options: PaginationOptions = {},
@@ -203,7 +198,9 @@ export class FileService {
     // Check subscription
     const isSubscribed = await this.subscriptionService.checkSubscription(user);
     if (!isSubscribed.isSubscribed) {
-      throw new Error('User is not subscribed, please subscribe to upload files');
+      throw new Error(
+        'User is not subscribed, please subscribe to upload files',
+      );
     }
 
     // Check storage limit

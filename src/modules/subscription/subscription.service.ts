@@ -47,27 +47,44 @@ export class SubscriptionService {
         where: { userId: user.id },
       });
 
-      if (!subscription) {
-        return {
-          isSubscribed: false,
-          plan: null,
-          expiresAt: null,
-        };
-      }
+      // Get word usage data regardless of subscription status
+      const wordUsage = await this.prisma.aIWordUsage.findUnique({
+        where: { userId: user.id },
+        select: {
+          totalWordLimit: true,
+          wordsGenerated: true,
+          expirationTime: true,
+        },
+      });
 
       const now = new Date();
-      const isActive =
-        subscription.status === 'active' && subscription.endDate > now;
+      const isActive = subscription?.status === 'active' && subscription?.endDate > now;
+
+      // Format token data
+      const tokenData = wordUsage ? {
+        totalTokens: wordUsage.totalWordLimit,
+        usedTokens: wordUsage.wordsGenerated,
+        remainingTokens: wordUsage.totalWordLimit - wordUsage.wordsGenerated,
+        tokenExpirationDate: wordUsage.expirationTime,
+        isTokenActive: wordUsage.expirationTime > now,
+      } : {
+        totalTokens: 0,
+        usedTokens: 0,
+        remainingTokens: 0,
+        tokenExpirationDate: null,
+        isTokenActive: false,
+      };
 
       return {
         isSubscribed: isActive,
         plan: isActive ? subscription.planId : null,
-        expiresAt: subscription.endDate,
-        subscription: {
+        expiresAt: subscription?.endDate || null,
+        subscription: subscription ? {
           status: subscription.status,
           productName: subscription.productName,
           variantName: subscription.variantName,
-        },
+        } : null,
+        tokens: tokenData,
       };
     } catch (error) {
       this.logger.error('Error checking subscription:', error);

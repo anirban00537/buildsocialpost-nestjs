@@ -67,77 +67,73 @@ export class LinkedInService {
     state: string,
   ): Promise<ResponseModel> {
     try {
-      // Log initial callback data
-      console.log('=== OAuth Callback Started ===');
-      console.log('State received:', state);
-      console.log('Code length:', code.length);
-
-      // Verify state and get userId
+      // Get userId from state map
       const userId = this.stateMap.get(state);
-      console.log('Found userId:', userId);
-
       if (!userId) {
-        console.log('State validation failed - no userId found');
         return errorResponse('Invalid state parameter');
       }
 
-      // Clean up state
-      this.stateMap.delete(state);
-      console.log('State map cleared');
-
       // Get access token
-      console.log('Requesting access token...');
       const tokenData = await this.getAccessToken(code);
-      console.log('Access token received:', {
-        token_type: tokenData.token_type,
-        expires_in: tokenData.expires_in,
-      });
+      
+      // Get user profile
+      const profile = await this.getUserProfile(tokenData.access_token);
 
-      // Get user profile using OpenID userinfo
-      console.log('Getting user profile...');
-      const profileData = await this.getUserProfile(tokenData.access_token);
-
-      if (!profileData.sub) {
-        throw new Error('No profile ID received from LinkedIn');
-      }
-
-      const expiresAt = new Date();
-      expiresAt.setSeconds(expiresAt.getSeconds() + tokenData.expires_in);
-
-      console.log('Upserting LinkedIn profile...');
-      const linkedInProfile = await this.prisma.linkedInProfile.upsert({
+      // Check if this LinkedIn profile is already connected to any user
+      const existingProfile = await this.prisma.linkedInProfile.findFirst({
         where: {
-          profileId: profileData.sub,
+          profileId: profile.sub,
         },
-        create: {
+        include: {
           user: {
-            connect: {
-              id: userId,
+            select: {
+              email: true,
             },
           },
-          profileId: profileData.sub,
-          accessToken: tokenData.access_token,
-          name: profileData.name || 'LinkedIn User',
-          email: profileData.email,
-          avatarUrl: profileData.picture || null,
-          clientId: this.configService.get('LINKEDIN_CLIENT_ID'),
-          creatorId: profileData.sub,
-          tokenExpiringAt: expiresAt,
-          linkedInProfileUrl: null,
-        },
-        update: {
-          accessToken: tokenData.access_token,
-          name: profileData.name || 'LinkedIn User',
-          email: profileData.email,
-          avatarUrl: profileData.picture || null,
-          tokenExpiringAt: expiresAt,
         },
       });
 
-      console.log('LinkedIn profile upserted successfully:', {
-        profileId: linkedInProfile.profileId,
-        name: linkedInProfile.name,
-        email: linkedInProfile.email,
+      if (existingProfile) {
+        // Check if it's connected to a different user
+        if (existingProfile.userId !== userId) {
+          return errorResponse(
+            `This LinkedIn profile is already connected to another account (${existingProfile.user.email}). Please disconnect it first before connecting to a new account.`
+          );
+        }
+        
+        // If connected to same user, update the token
+        const updatedProfile = await this.prisma.linkedInProfile.update({
+          where: {
+            profileId: profile.sub,
+          },
+          data: {
+            accessToken: tokenData.access_token,
+            tokenExpiringAt: new Date(Date.now() + tokenData.expires_in * 1000),
+            name: profile.name,
+            email: profile.email,
+            avatarUrl: profile.picture,
+          },
+        });
+
+        return successResponse('LinkedIn profile token updated successfully', {
+          profile: updatedProfile,
+        });
+      }
+
+      // Create new profile if it doesn't exist
+      const linkedInProfile = await this.prisma.linkedInProfile.create({
+        data: {
+          userId,
+          profileId: profile.sub,
+          accessToken: tokenData.access_token,
+          name: profile.name,
+          email: profile.email,
+          avatarUrl: profile.picture,
+          clientId: this.configService.get<string>('LINKEDIN_CLIENT_ID'),
+          creatorId: profile.sub,
+          tokenExpiringAt: new Date(Date.now() + tokenData.expires_in * 1000),
+          isDefault: true, // First profile is set as default
+        },
       });
 
       console.log('=== OAuth Callback Completed Successfully ===');

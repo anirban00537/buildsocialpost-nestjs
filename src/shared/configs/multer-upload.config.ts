@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 /** Constant containing a Regular Expression
  * with the valid image upload types
  */
-export const validImageUploadTypesRegex = /jpeg|jpg|png/;
+export const validImageUploadTypesRegex = /jpeg|jpg|png|pdf/;
 
 /** Constant that sets the maximum image upload file size */
 export const maxImageUploadSize = 7 * 1024 * 1024; // 7MB

@@ -8,6 +8,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [PrismaModule],
   controllers: [AiContentController],
   providers: [AiContentService, OpenAIService],
-  exports: [AiContentService],
+  exports: [AiContentService, OpenAIService],
 })
 export class AiContentModule {}

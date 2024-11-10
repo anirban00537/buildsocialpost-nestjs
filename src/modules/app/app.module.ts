@@ -7,6 +7,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from 'src/shared/guards/jwt-auth.guard';
+import { SubscriptionGuard } from 'src/shared/guards/subscription.guard';
 import { MailConfig } from 'src/shared/configs/mail.config';
 import { UsersModule } from '../users/users.module';
 import { MailModule } from 'src/shared/mail/mail.module';
@@ -51,6 +52,10 @@ import { SchedulingModule } from '../scheduling/scheduling.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: SubscriptionGuard,
     },
   ],
 })

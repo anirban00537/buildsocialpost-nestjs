@@ -16,13 +16,14 @@ import { UserInfo } from 'src/shared/decorators/user.decorators';
 import { User } from '@prisma/client';
 import { ResponseModel } from 'src/shared/models/response.model';
 import { memoryStorage } from 'multer';
+import { IsSubscribed } from 'src/shared/decorators/is-subscribed.decorator';
 
 @Controller('files')
 @UseInterceptors(ClassSerializerInterceptor)
 export class FileController {
   constructor(private readonly fileService: FileService) {}
-
   @Post('upload')
+  @IsSubscribed()
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
@@ -35,7 +36,7 @@ export class FileController {
   ): Promise<ResponseModel> {
     return this.fileService.uploadImage(file, user);
   }
-  @Get()
+  @Get('files')
   async getFiles(
     @UserInfo() user: User,
     @Query('page') page: number,

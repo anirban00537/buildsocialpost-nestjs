@@ -19,6 +19,7 @@ import { UserVerificationCodeService } from '../verification_code/user-verify-co
 import { NotificationService } from 'src/shared/notification/notification.service';
 import { ResponseModel } from 'src/shared/models/response.model';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AiContentService } from '../ai-content/ai-content.service';
 
 @Injectable()
 export class UsersService {
@@ -26,6 +27,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly userCodeService: UserVerificationCodeService,
     private readonly notificationService: NotificationService,
+    private readonly aiContentService: AiContentService,
   ) {}
 
   async checkEmailNickName(email: string, nickName: string) {
@@ -104,6 +106,17 @@ export class UsersService {
       });
 
       if (result.user && result.workspace) {
+        // Assign initial token credits
+        const tokenAssignment = await this.aiContentService.assignTokenCredits(
+          result.user.id,
+          3000,  // 3000 tokens
+          30     // 30 days expiration
+        );
+
+        if (!tokenAssignment.success) {
+          console.error('Failed to assign initial tokens:', tokenAssignment.error);
+        }
+
         if (result.user) {
           // const mailKey = generateMailKey();
           // const codeData = {

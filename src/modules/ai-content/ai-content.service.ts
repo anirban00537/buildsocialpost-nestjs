@@ -162,7 +162,7 @@ export class AiContentService {
   ): Promise<TokenCheckResult> {
     try {
       const wordCount = this.calculateWordCount(content);
-      
+
       // Check token availability
       const tokenCheck = await this.checkTokenAvailability(userId, wordCount);
       if (!tokenCheck.isValid) {
@@ -185,11 +185,71 @@ export class AiContentService {
     }
   }
 
+  private async checkTokenAvailabilityBeforeGeneration(
+    userId: number,
+  ): Promise<TokenCheckResult> {
+    try {
+      const wordUsage = await this.prisma.aIWordUsage.findUnique({
+        where: { userId },
+      });
+
+      if (!wordUsage) {
+        return {
+          isValid: false,
+          message: 'TOKEN_NOT_FOUND',
+          remainingTokens: 0,
+          totalTokens: 0,
+          wordCount: 0,
+        };
+      }
+
+      if (wordUsage.expirationTime < new Date()) {
+        return {
+          isValid: false,
+          message: 'TOKEN_EXPIRED',
+          remainingTokens: 0,
+          totalTokens: wordUsage.totalWordLimit,
+          wordCount: 0,
+        };
+      }
+
+      const remainingTokens =
+        wordUsage.totalWordLimit - wordUsage.wordsGenerated;
+      if (remainingTokens <= 0) {
+        return {
+          isValid: false,
+          message: 'INSUFFICIENT_TOKENS',
+          remainingTokens,
+          totalTokens: wordUsage.totalWordLimit,
+          wordCount: 0,
+        };
+      }
+
+      return {
+        isValid: true,
+        message: 'TOKENS_AVAILABLE',
+        remainingTokens,
+        totalTokens: wordUsage.totalWordLimit,
+        wordCount: 0,
+      };
+    } catch (error) {
+      this.logger.error(`Error checking token availability: ${error.message}`);
+      throw error;
+    }
+  }
+
   async generateCarouselContent(
     userId: number,
     dto: GenerateCarouselContentDto,
   ): Promise<ResponseModel> {
     try {
+      // Check token availability first
+      const tokenCheck =
+        await this.checkTokenAvailabilityBeforeGeneration(userId);
+      if (!tokenCheck.isValid) {
+        return errorResponse(this.getErrorMessage(tokenCheck.message));
+      }
+
       const content: string =
         await this.openAIService.generateCarouselContentFromTopic(
           dto.topic,
@@ -200,9 +260,9 @@ export class AiContentService {
           dto.targetAudience,
         );
 
-      const tokenCheck = await this.checkAndDeductTokens(userId, content);
-      if (!tokenCheck.isValid) {
-        return errorResponse(this.getErrorMessage(tokenCheck.message));
+      const tokenDeduction = await this.checkAndDeductTokens(userId, content);
+      if (!tokenDeduction.isValid) {
+        return errorResponse(this.getErrorMessage(tokenDeduction.message));
       }
 
       let colorPaletteResponse: string | null = null;
@@ -222,9 +282,9 @@ export class AiContentService {
       return successResponse('Carousel content generated successfully', {
         response,
         colorPalette,
-        wordCount: tokenCheck.wordCount,
-        remainingTokens: tokenCheck.remainingTokens,
-        totalTokens: tokenCheck.totalTokens,
+        wordCount: tokenDeduction.wordCount,
+        remainingTokens: tokenDeduction.remainingTokens,
+        totalTokens: tokenDeduction.totalTokens,
       });
     } catch (error) {
       this.logger.error(`Error generating carousel content: ${error.message}`);
@@ -237,22 +297,32 @@ export class AiContentService {
     dto: GenerateLinkedInPostsDto,
   ): Promise<ResponseModel> {
     try {
+      // Check token availability first
+      const tokenCheck =
+        await this.checkTokenAvailabilityBeforeGeneration(userId);
+      if (!tokenCheck.isValid) {
+        return errorResponse(this.getErrorMessage(tokenCheck.message));
+      }
+
       const rawContent: string = await this.openAIService.generateLinkedInPosts(
         dto.prompt,
         dto.language,
         dto.tone,
       );
 
-      const tokenCheck = await this.checkAndDeductTokens(userId, rawContent);
-      if (!tokenCheck.isValid) {
-        return errorResponse(this.getErrorMessage(tokenCheck.message));
+      const tokenDeduction = await this.checkAndDeductTokens(
+        userId,
+        rawContent,
+      );
+      if (!tokenDeduction.isValid) {
+        return errorResponse(this.getErrorMessage(tokenDeduction.message));
       }
 
       return successResponse('LinkedIn post generated successfully', {
         post: rawContent,
-        wordCount: tokenCheck.wordCount,
-        remainingTokens: tokenCheck.remainingTokens,
-        totalTokens: tokenCheck.totalTokens,
+        wordCount: tokenDeduction.wordCount,
+        remainingTokens: tokenDeduction.remainingTokens,
+        totalTokens: tokenDeduction.totalTokens,
       });
     } catch (error) {
       this.logger.error(`Error generating LinkedIn post: ${error.message}`);
@@ -265,25 +335,34 @@ export class AiContentService {
     topic: string,
   ): Promise<ResponseModel> {
     try {
-      const content =
-        await this.openAIService.generateLinkedInPostContentForCarousel(topic);
-      
-      const tokenCheck = await this.checkAndDeductTokens(userId, content);
+      // Check token availability first
+      const tokenCheck =
+        await this.checkTokenAvailabilityBeforeGeneration(userId);
       if (!tokenCheck.isValid) {
         return errorResponse(this.getErrorMessage(tokenCheck.message));
       }
 
+      const content =
+        await this.openAIService.generateLinkedInPostContentForCarousel(topic);
+
+      const tokenDeduction = await this.checkAndDeductTokens(userId, content);
+      if (!tokenDeduction.isValid) {
+        return errorResponse(this.getErrorMessage(tokenDeduction.message));
+      }
+
       return successResponse('LinkedIn post content generated successfully', {
         post: content,
-        wordCount: tokenCheck.wordCount,
-        remainingTokens: tokenCheck.remainingTokens,
-        totalTokens: tokenCheck.totalTokens,
+        wordCount: tokenDeduction.wordCount,
+        remainingTokens: tokenDeduction.remainingTokens,
+        totalTokens: tokenDeduction.totalTokens,
       });
     } catch (error) {
       this.logger.error(
         `Error generating LinkedIn post content for carousel: ${error.message}`,
       );
-      return errorResponse('Error generating LinkedIn post content for carousel');
+      return errorResponse(
+        'Error generating LinkedIn post content for carousel',
+      );
     }
   }
 
@@ -332,6 +411,77 @@ export class AiContentService {
     } catch (error) {
       this.logger.error(`Error resetting tokens: ${error.message}`);
       return errorResponse('Error resetting tokens');
+    }
+  }
+
+  async assignTokenCredits(
+    userId: number,
+    credits: number,
+    expirationDays: number = 30,
+  ): Promise<{ 
+    success: boolean;
+    credits?: number;
+    expirationDate?: Date;
+    error?: string;
+  }> {
+    try {
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + expirationDays);
+
+      const existingUsage = await this.prisma.aIWordUsage.findUnique({
+        where: { userId },
+      });
+
+      if (existingUsage) {
+        await this.prisma.$transaction([
+          this.prisma.aIWordUsage.update({
+            where: { userId },
+            data: {
+              totalWordLimit: {
+                increment: credits,
+              },
+              expirationTime: expirationDate,
+              lastResetDate: new Date(),
+            },
+          }),
+          this.prisma.wordTokenLog.create({
+            data: {
+              aiWordUsageId: existingUsage.id,
+              amount: credits,
+              type: 'CREDIT_ASSIGNMENT',
+              description: `Assigned ${credits} token credits`,
+            },
+          }),
+        ]);
+      } else {
+        await this.prisma.aIWordUsage.create({
+          data: {
+            userId,
+            totalWordLimit: credits,
+            wordsGenerated: 0,
+            expirationTime: expirationDate,
+            wordTokenLogs: {
+              create: {
+                amount: credits,
+                type: 'CREDIT_ASSIGNMENT',
+                description: `Initial assignment of ${credits} token credits`,
+              },
+            },
+          },
+        });
+      }
+
+      return {
+        success: true,
+        credits,
+        expirationDate,
+      };
+    } catch (error) {
+      this.logger.error(`Error assigning token credits: ${error.message}`);
+      return {
+        success: false,
+        error: error.message,
+      };
     }
   }
 }
