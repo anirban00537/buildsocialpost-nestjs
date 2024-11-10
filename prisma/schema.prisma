@@ -145,17 +145,19 @@ model UserTokens {
 model Subscription {
   id                         Int      @id @default(autoincrement())
   userId                     Int      @unique
-  orderId                    String   @unique
-  status                     String
-  planId                     String
+  orderId                    String?  @unique // Make optional for trial
+  status                     String   // "trial", "active", "expired", "cancelled"
+  planId                     String?  // Null for trial
   endDate                    DateTime
+  isTrial                    Boolean  @default(false)
+  trialUsed                  Boolean  @default(false)
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
-  productName                String
-  variantName                String
-  subscriptionLengthInMonths Int
-  totalAmount                Float
-  currency                   String
+  productName                String?
+  variantName                String?
+  subscriptionLengthInMonths Int?
+  totalAmount                Float?
+  currency                   String?
   user                       User     @relation(fields: [userId], references: [id])
 
   @@index([userId])

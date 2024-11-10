@@ -33,6 +33,7 @@ import { GoogleLoginDto } from './dto/google-login.dto';
 import { OAuth2Client } from 'google-auth-library';
 import { ConfigService } from '@nestjs/config';
 import { LOGIN_PROVIDER } from 'src/shared/constants/global.constants';
+import { SubscriptionService } from '../subscription/subscription.service';
 
 @Injectable()
 export class AuthService {
@@ -44,6 +45,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly userVerificationCodeService: UserVerificationCodeService,
     private configService: ConfigService,
+    private readonly subscriptionService: SubscriptionService,
   ) {
     this.googleClient = new OAuth2Client(
       this.configService.get('GOOGLE_CLIENT_ID'),
@@ -123,6 +125,16 @@ export class AuthService {
       if (user.role === coreConstant.USER_ROLE_ADMIN) {
         userData.isAdmin = true;
       }
+
+      // Check and create trial if needed
+      const subscription = await this.prisma.subscription.findUnique({
+        where: { userId: user.id },
+      });
+
+      if (!subscription && !subscription?.trialUsed) {
+        await this.subscriptionService.createTrialSubscription(user.id);
+      }
+
       return successResponse('Login successful', userData);
     } catch (err) {
       return errorResponse('Invalid email or password', []);

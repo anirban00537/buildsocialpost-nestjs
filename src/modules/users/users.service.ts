@@ -20,6 +20,7 @@ import { NotificationService } from 'src/shared/notification/notification.servic
 import { ResponseModel } from 'src/shared/models/response.model';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AiContentService } from '../ai-content/ai-content.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 
 @Injectable()
 export class UsersService {
@@ -28,6 +29,7 @@ export class UsersService {
     private readonly userCodeService: UserVerificationCodeService,
     private readonly notificationService: NotificationService,
     private readonly aiContentService: AiContentService,
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
   async checkEmailNickName(email: string, nickName: string) {
@@ -86,57 +88,33 @@ export class UsersService {
             unique_code: createUniqueCode(),
           },
         });
-        let workspace = await prisma.workspace.findFirst({
-          where: {
+
+        // Create a default workspace
+        const workspace = await prisma.workspace.create({
+          data: {
+            name: `${user.first_name || user.email}'s Workspace`,
+            isDefault: true,
             userId: user.id,
           },
         });
-        // Create a default workspace for the user
-        if (!workspace) {
-          workspace = await prisma.workspace.create({
-            data: {
-              name: `${user.first_name || user.email}'s Workspace`,
-              isDefault: true,
-              userId: user.id,
-            },
-          });
-        }
 
         return { user, workspace };
       });
 
       if (result.user && result.workspace) {
-        // Assign initial token credits
-        const tokenAssignment = await this.aiContentService.assignTokenCredits(
-          result.user.id,
-          3000,  // 3000 tokens
-          30     // 30 days expiration
+        // Start trial subscription
+        const trialResult = await this.subscriptionService.createTrialSubscription(
+          result.user.id
         );
 
-        if (!tokenAssignment.success) {
-          console.error('Failed to assign initial tokens:', tokenAssignment.error);
-        }
-
-        if (result.user) {
-          // const mailKey = generateMailKey();
-          // const codeData = {
-          //   user_id: user.id,
-          //   code: mailKey,
-          //   type: coreConstant.VERIFICATION_TYPE_EMAIL,
-          // };
-          // await this.userCodeService.createUserCode(codeData);
-          // const mailData = {
-          //   verification_code: mailKey,
-          // };
-          // await this.userCodeService.createUserCode(codeData);
-          // this.notificationService.send(
-          //   new SignupVerificationMailNotification(mailData),
-          //   user,
-          // );
+        if (!trialResult.success) {
+          console.error(
+            `Failed to create trial subscription: ${trialResult.error}`
+          );
         }
 
         return successResponse(
-          'New user created successfully with default workspace',
+          'New user created successfully with trial subscription',
           result.user,
         );
       }

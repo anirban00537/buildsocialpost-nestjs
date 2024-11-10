@@ -19,6 +19,13 @@ import { successResponse, errorResponse } from 'src/shared/helpers/functions';
 import { ResponseModel } from 'src/shared/models/response.model';
 import axios from 'axios';
 import { WordLimitUpdate } from './types/subscription';
+import {
+  SUBSCRIPTION_CONFIG,
+  generateTrialOrderId,
+  getTrialEndDate,
+  getTrialSubscriptionData,
+  isTrialExpired,
+} from 'src/shared/constants/subscription.config';
 
 @Injectable()
 export class SubscriptionService {
@@ -58,32 +65,38 @@ export class SubscriptionService {
       });
 
       const now = new Date();
-      const isActive = subscription?.status === 'active' && subscription?.endDate > now;
+      const isActive =
+        subscription?.status === 'active' && subscription?.endDate > now;
 
       // Format token data
-      const tokenData = wordUsage ? {
-        totalTokens: wordUsage.totalWordLimit,
-        usedTokens: wordUsage.wordsGenerated,
-        remainingTokens: wordUsage.totalWordLimit - wordUsage.wordsGenerated,
-        tokenExpirationDate: wordUsage.expirationTime,
-        isTokenActive: wordUsage.expirationTime > now,
-      } : {
-        totalTokens: 0,
-        usedTokens: 0,
-        remainingTokens: 0,
-        tokenExpirationDate: null,
-        isTokenActive: false,
-      };
+      const tokenData = wordUsage
+        ? {
+            totalTokens: wordUsage.totalWordLimit,
+            usedTokens: wordUsage.wordsGenerated,
+            remainingTokens:
+              wordUsage.totalWordLimit - wordUsage.wordsGenerated,
+            tokenExpirationDate: wordUsage.expirationTime,
+            isTokenActive: wordUsage.expirationTime > now,
+          }
+        : {
+            totalTokens: 0,
+            usedTokens: 0,
+            remainingTokens: 0,
+            tokenExpirationDate: null,
+            isTokenActive: false,
+          };
 
       return {
         isSubscribed: isActive,
         plan: isActive ? subscription.planId : null,
         expiresAt: subscription?.endDate || null,
-        subscription: subscription ? {
-          status: subscription.status,
-          productName: subscription.productName,
-          variantName: subscription.variantName,
-        } : null,
+        subscription: subscription
+          ? {
+              status: subscription.status,
+              productName: subscription.productName,
+              variantName: subscription.variantName,
+            }
+          : null,
         tokens: tokenData,
       };
     } catch (error) {
@@ -96,15 +109,59 @@ export class SubscriptionService {
   async checkSubscriptionResponse(user: User) {
     try {
       const subscriptionStatus = await this.checkSubscription(user);
+      const subscription = await this.prisma.subscription.findUnique({
+        where: { userId: user.id },
+      });
+
       const plan_id = subscriptionStatus.plan;
       const plan = PRICING_PLANS.find((p) => p.id === plan_id);
       const limits = plan?.limits;
       const userWordUsage = await this.getWordUsageData(user.id);
 
+      // Calculate trial information
+      const trialInfo = subscription?.isTrial
+        ? {
+            isTrial: true,
+            trialEndDate: subscription.endDate,
+            daysRemaining: Math.max(
+              0,
+              Math.ceil(
+                (new Date(subscription.endDate).getTime() -
+                  new Date().getTime()) /
+                  (1000 * 60 * 60 * 24),
+              ),
+            ),
+            hoursRemaining: Math.max(
+              0,
+              Math.ceil(
+                (new Date(subscription.endDate).getTime() -
+                  new Date().getTime()) /
+                  (1000 * 60 * 60),
+              ),
+            ),
+            status: subscription.status,
+            isExpired: new Date(subscription.endDate) < new Date(),
+          }
+        : {
+            isTrial: false,
+            trialUsed: subscription?.trialUsed || false,
+          };
+
       return successResponse('Subscription checked successfully', {
         ...subscriptionStatus,
         limits,
-        userWordUsage: userWordUsage,
+        userWordUsage,
+        trial: trialInfo,
+        subscription: subscription
+          ? {
+              status: subscription.status,
+              endDate: subscription.endDate,
+              productName: subscription.productName,
+              variantName: subscription.variantName,
+              isTrial: subscription.isTrial,
+              trialUsed: subscription.trialUsed,
+            }
+          : null,
       });
     } catch (error) {
       this.logger.error('Error checking subscription:', error);
@@ -517,5 +574,98 @@ export class SubscriptionService {
       this.logger.error('Error updating word usage limit:', error);
       throw new Error(`Failed to update word usage limit: ${error.message}`);
     }
+  }
+
+  async createTrialSubscription(userId: number): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
+    try {
+      const existingSubscription = await this.prisma.subscription.findUnique({
+        where: { userId },
+      });
+
+      if (existingSubscription?.trialUsed) {
+        return { 
+          success: false, 
+          error: SUBSCRIPTION_CONFIG.MESSAGES.TRIAL_USED 
+        };
+      }
+
+      const trialEndDate = getTrialEndDate();
+
+      await this.prisma.$transaction(async (prisma) => {
+        // Create trial subscription
+        await prisma.subscription.create({
+          data: {
+            userId,
+            status: SUBSCRIPTION_CONFIG.STATUS.TRIAL,
+            endDate: trialEndDate,
+            isTrial: true,
+            trialUsed: true,
+            planId: SUBSCRIPTION_CONFIG.TRIAL.PLAN_ID,
+            productName: SUBSCRIPTION_CONFIG.TRIAL.PRODUCT_NAME,
+            variantName: SUBSCRIPTION_CONFIG.TRIAL.VARIANT_NAME,
+            subscriptionLengthInMonths: 0,
+            totalAmount: 0,
+            currency: 'USD',
+            orderId: generateTrialOrderId(userId),
+          },
+        });
+
+        // Create AIWordUsage for trial
+        const wordUsage = await prisma.aIWordUsage.create({
+          data: {
+            userId,
+            totalWordLimit: SUBSCRIPTION_CONFIG.TRIAL.TOKEN_LIMIT,
+            wordsGenerated: 0,
+            expirationTime: trialEndDate,
+            lastResetDate: new Date(),
+          },
+        });
+
+        // Create token log entry
+        await prisma.wordTokenLog.create({
+          data: {
+            aiWordUsageId: wordUsage.id,
+            amount: SUBSCRIPTION_CONFIG.TRIAL.TOKEN_LIMIT,
+            type: SUBSCRIPTION_CONFIG.TOKEN_LOG_TYPES.TRIAL,
+            description: 'Trial subscription token allocation',
+          },
+        });
+      });
+
+      return { 
+        success: true,
+      };
+    } catch (error) {
+      this.logger.error('Error creating trial subscription:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  async hasTrialBeenUsed(userId: number): Promise<boolean> {
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { userId },
+    });
+    return subscription?.trialUsed || false;
+  }
+
+  async isTrialActive(userId: number): Promise<boolean> {
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { userId },
+    });
+
+    if (!subscription || !subscription.isTrial) {
+      return false;
+    }
+
+    return (
+      subscription.status === SUBSCRIPTION_CONFIG.STATUS.TRIAL &&
+      !isTrialExpired(subscription.endDate)
+    );
   }
 }

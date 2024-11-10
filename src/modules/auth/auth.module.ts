@@ -10,6 +10,8 @@ import { AccessJwtStrategy } from './strategy/access.jwt.strategy';
 import { UserVerificationCodeService } from '../verification_code/user-verify-code.service';
 // import { LocalStrategy } from "src/common/strategy/local.strategy";
 import { ConfigModule } from '@nestjs/config';
+import { SubscriptionModule } from '../subscription/subscription.module';
+import { UserVerificationCodeModule } from '../verification_code/user-verify-code.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { ConfigModule } from '@nestjs/config';
       signOptions: { expiresIn: accessJwtConfig.expiresIn },
     }),
     ConfigModule,
+    UserVerificationCodeModule,
+    SubscriptionModule,
   ],
   providers: [AuthService, AccessJwtStrategy, UserVerificationCodeService],
   controllers: [AuthController],

@@ -2,12 +2,14 @@ import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../modules/prisma/prisma.service';
 import { IS_SUBSCRIBED_KEY } from '../decorators/is-subscribed.decorator';
+import { SubscriptionService } from '../../modules/subscription/subscription.service';
 
 @Injectable()
 export class SubscriptionGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private prisma: PrismaService,
+    private subscriptionService: SubscriptionService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -28,16 +30,20 @@ export class SubscriptionGuard implements CanActivate {
     }
 
     try {
-      const subscription = await this.prisma.subscription.findUnique({
-        where: { userId: user.id },
-      });
+      const [isTrialActive, subscription] = await Promise.all([
+        this.subscriptionService.isTrialActive(user.id),
+        this.prisma.subscription.findUnique({
+          where: { userId: user.id },
+        }),
+      ]);
 
-      const now = new Date();
-      const isActive = subscription?.status === 'active' && subscription?.endDate > now;
+      const isSubscriptionActive = 
+        subscription?.status === 'active' && 
+        subscription?.endDate > new Date();
 
-      if (!isActive) {
+      if (!isTrialActive && !isSubscriptionActive) {
         throw new UnauthorizedException(
-          'This feature requires an active subscription. Please subscribe to continue.'
+          'Trial period has ended. Please subscribe to continue.'
         );
       }
 
